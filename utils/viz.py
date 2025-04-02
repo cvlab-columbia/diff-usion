@@ -139,6 +139,7 @@ def plot_new_row_with_probs(
     else:
         # single row
         for i, img in enumerate(sample):
+            #import pdb; pdb.set_trace()
             axes[i].imshow(img)
             axes[i].axis("off")
 

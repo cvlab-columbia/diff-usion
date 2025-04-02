@@ -12,7 +12,6 @@ from diffusers import KandinskyV22PriorPipeline
 from models.kandinsky_pipelines import KandinskyV22PipelineWithInversion, ManipulateMode
 from peft import PeftModel
 from utils.metrics import ensemble_predict
-from classifiers.clip_classifier_train import CLIPClassifier
 from textual_inversion_config import KandinskyEvalConfig
 from datasets import (
     get_cls_dataset_by_name,
@@ -31,11 +30,8 @@ from utils.viz import (
     plot_grid_with_probs,
     plot_new_row_with_probs,
 )
-from pytorch_grad_cam import GradCAM
-from pytorch_grad_cam.utils.model_targets import BinaryClassifierOutputTarget
-from pytorch_grad_cam.utils.image import show_cam_on_image, preprocess_image
+
 import torch.nn.functional as F
-from torchvision.transforms.functional import to_pil_image
 import numpy as np
 
 
@@ -145,12 +141,7 @@ def main(cfg: KandinskyEvalConfig):
                     # image_embeds = orig_image_embeds + manipulation_scale * (
                     #     pos_embeds_mean - neg_embeds_mean
                     # )
-                    knn_pos_embeds = find_nearest_neighbors(
-                        orig_image_embeds, pos_embeds, k=10
-                    ).mean(1)
-                    norm_knn_pos_embeds = knn_pos_embeds / knn_pos_embeds.norm(
-                        dim=-1, keepdim=True
-                    )
+                    
 
                     # avg
                     image_embeds = norm_image_embeds + manip * (
@@ -267,10 +258,10 @@ def main(cfg: KandinskyEvalConfig):
             #     prob_text_prefix="",
             # )
             plot_new_row_with_probs(
-                sample=concat_samples[1:],
+                sample=concat_samples[0:],
                 probs=None,
                 save_path=save_path,
-                ncols=len(manipulation_scales),
+                ncols=len(manipulation_scales)+1,
             )
 
             # save interp with probs
@@ -285,10 +276,10 @@ def main(cfg: KandinskyEvalConfig):
             #     prob_text_prefix="",
             # )
             plot_new_row_with_probs(
-                sample=concat_samples[1:],
-                probs=probs[1:],
+                sample=concat_samples[0:],
+                probs=probs[0:],
                 save_path=save_path_probs,
-                ncols=len(manipulation_scales),
+                ncols=len(manipulation_scales)+1,
             )
 
 

@@ -2,7 +2,6 @@ import torch
 from scipy import linalg
 from dataclasses import dataclass
 from torchvision.models.inception import inception_v3, Inception_V3_Weights
-from facenet_pytorch import InceptionResnetV1
 import numpy as np
 import torch.nn as nn
 import lpips
@@ -48,31 +47,6 @@ def compute_lpips_similarity(
         distance = distance.mean()
     return distance
 
-
-def compute_facenet_similarity(images_1: torch.Tensor, images_2: torch.Tensor):
-    # Initialize the FaceNet model
-    device = images_1.device
-    model = InceptionResnetV1(pretrained="vggface2").eval().to(device)
-
-    # Define a transformation to preprocess the input images
-    preprocess = transforms.Compose(
-        [
-            transforms.Resize((160, 160)),  # FaceNet expects 160x160 images
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-
-    # Load and preprocess the images
-    img1_tensor = preprocess(images_1)
-    img2_tensor = preprocess(images_2)
-
-    # Extract the embedding
-    with torch.no_grad():
-        x1 = model(img1_tensor)
-        x2 = model(img2_tensor)
-
-    similarity = F.cosine_similarity(x1, x2, dim=1)
-    return similarity.mean().item()
 
 
 def calculate_fid(

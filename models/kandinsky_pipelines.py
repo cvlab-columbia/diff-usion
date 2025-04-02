@@ -1,6 +1,5 @@
 import torch
 import lpips
-from facenet_pytorch import InceptionResnetV1
 import PIL.Image
 from enum import Enum, auto
 from typing import Optional, Union, Callable, Dict, List, Tuple, Any

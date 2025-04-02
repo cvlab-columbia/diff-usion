@@ -15,13 +15,13 @@ than known a priori. In the Retina dataset, normal retinas lack the horizontal l
 ## Setup
 Create conda environment:
 ```bash
-$ conda create -n subtlediff python=3.10
-$ conda activate subtlediff
+$ conda create -p /proj/vondrick4/mia/condaenvs/diff-usion python=3.9
+$ conda activate diff-usion
 ```
 Clone and install requirements:
 ```bash
-$ git clone https://github.com/OrrAvrech/magnification.git
-$ cd magnification
+$ git clone https://github.com/cvlab-columbia/diff-usion
+$ cd diff-usion
 $ pip install -r requirements.txt
 ```
 
