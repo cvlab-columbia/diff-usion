@@ -1,0 +1,20 @@
+dataset:
+  name: kermany
+  image_dir: /proj/vondrick/datasets/magnification/kermany
+  classes: ["DRUSEN", "NORMAL"]
+  img_size: 512
+file_list_paths: 
+  - /proj/vondrick2/mia/magnificationold/file_list_short/file_list_kermany_target0.txt
+  - /proj/vondrick2/mia/magnificationold/file_list_short/file_list_kermany_target1.txt
+
+batch_size: 1
+num_inference_steps: 100
+device: 3 
+output_dir: ./results/eval/kandinsky_sweeps/reports/kermany_ckpt_num_images
+
+eval_clf_weights: /proj/vondrick2/mia/magnificationold/results/ensemble/kermany
+
+clip_image_embeds_dir: /proj/vondrick2/mia/magnificationold/results/clip_image_embeds/kermany
+embed_filenames: ["0_val", "1_val"]
+
+lora_weights_dir: /proj/vondrick2/mia/magnificationold/output/lora/kermany_50/checkpoint-2000 
