@@ -1,6 +1,6 @@
 # Teaching Humans Subtle Differences with *DIFF*usion
 <!-- <a href="https://openreview.net/forum?id=rm9ewAwLTR&referrer=%5BAuthor%20Console%5D(%2Fgroup%3Fid%3Dthecvf.com%2FICCV%2F2025%2FConference%2FAuthors%23your-submissions)"><img src="https://img.shields.io/badge/arXiv-2308.02669-b31b1b.svg" height=20.5></a> -->
-<a href="diff-usion.cs.columbia.edu"><img src="https://img.shields.io/static/v1?label=Project&message=Website&color=red" height=20.5></a> 
+<a href="https://diff-usion.cs.columbia.edu/"><img src="https://img.shields.io/static/v1?label=Project&message=Website&color=red" height=20.5></a> 
 
 Official implementation of **Teaching Humans Subtle Differences with *DIFF*usion**.
 
