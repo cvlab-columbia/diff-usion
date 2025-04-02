@@ -5,7 +5,6 @@ file_lists/
 launch.json
 clf_ckpts/
 prob_figures/
-configs/
 *.ttf
 
 # Byte-compiled / optimized / DLL files

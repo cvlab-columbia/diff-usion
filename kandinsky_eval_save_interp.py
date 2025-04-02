@@ -94,7 +94,7 @@ def main(cfg: KandinskyEvalConfig):
         ]
     )
 
-    cfg.dataset.file_list_path = cfg.file_list_paths[0]
+    cfg.dataset.file_list_path = cfg.file_list_paths[1]
     _, val_ds = get_cls_dataset_by_name(
         cfg.dataset, dataset_transforms=[transform, transform]
     )

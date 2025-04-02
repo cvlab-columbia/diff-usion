@@ -38,16 +38,15 @@ $ python kandinsky_lora_train.py --config_path configs/train_kandinsky_lora.yaml
 ### Locate source and target CLIP embedding files (or create your own)
 To save CLIP features for YOUR own dataset, run:
 ```bash
-$ python scripts/save_clip_features.py
+$ python scripts/save_embeds.py
 ```
 
 ### Modify config file
-TODO: inference config file explanation
+The image editing config file is in `configs/edit` folder, and we have provided an example one for the retina dataset.
 
 ### Run inference
-Run script (TODO: change inference script + config and give an example)
 ```bash
-$ python kandinsky_eval.py --config_path configs/kandinsky_eval.yaml
+$ python kandinsky_eval.py --config_path configs/edit/retina.yaml
 ```
 
 ## Citation
