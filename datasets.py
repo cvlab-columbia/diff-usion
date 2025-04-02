@@ -11,99 +11,8 @@ import pandas as pd
 from typing import Optional, Union, List, Tuple
 from utils.templates import INSTRUCT_PREFIX_TEMPLATES, IMAGENET_CLIP_TEMPLATES
 from textual_inversion_config import InstructInversionBPTTConfig, DatasetConfig
-
-
-class Birds(Dataset):
-    def __init__(self, root_dir: Path, split: str, transform=None):
-        self.root_dir = root_dir
-        self.split_dir = self.root_dir / split
-        self.transform = transform
-
-        self.car_images = list(self.split_dir.rglob("*.jpg"))
-
-        self.image_list = self.car_images
-        self.labels = [0] * len(self.car_images)
-
-    def __len__(self):
-        return len(self.image_list)
-
-    def __getitem__(self, idx):
-        img_path = self.image_list[idx]
-        image = process_image(img_path)
-        label = self.labels[idx]
-
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
-
-class TextualInversionBirds(Birds):
-    def __init__(
-        self,
-        root_dir: Path,
-        split: str,
-        placeholder_str: list[str],
-        use_prefix: bool = False,
-        transform=None,
-    ):
-        super().__init__(root_dir, split, transform)
-        self.placeholder_str = placeholder_str
-        self.use_prefix = use_prefix
-
-    def __getitem__(self, idx):
-        image, prompt = get_sample_with_prompts(
-            idx, self.image_list, self.placeholder_str, self.use_prefix, self.transform
-        )
-        label = self.labels[idx]
-        return image, prompt, label
-
-
-class Cars(Dataset):
-    def __init__(self, root_dir: Path, split: str, transform=None):
-        self.root_dir = root_dir
-        self.newstr = "cars_" + split
-        self.split_dir = self.root_dir / self.newstr
-        self.transform = transform
-
-        self.car_images = list(self.split_dir.rglob("*.jpg"))
-
-        self.image_list = self.car_images
-        self.labels = [0] * len(self.car_images)
-
-    def __len__(self):
-        return len(self.image_list)
-
-    def __getitem__(self, idx):
-        img_path = self.image_list[idx]
-        image = process_image(img_path)
-        label = self.labels[idx]
-
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
-
-class TextualInversionCars(Cars):
-    def __init__(
-        self,
-        root_dir: Path,
-        split: str,
-        placeholder_str: list[str],
-        use_prefix: bool = False,
-        transform=None,
-    ):
-        super().__init__(root_dir, split, transform)
-        self.placeholder_str = placeholder_str
-        self.use_prefix = use_prefix
-
-    def __getitem__(self, idx):
-        image, prompt = get_sample_with_prompts(
-            idx, self.image_list, self.placeholder_str, self.use_prefix, self.transform
-        )
-        label = self.labels[idx]
-        return image, prompt, label
+from collections import Counter 
+from io import StringIO
 
 
 class AFHQ(Dataset):
@@ -116,6 +25,7 @@ class AFHQ(Dataset):
         classes: Optional[list[str]] = None,
         file_list_path: Optional[Path] = None,
         transform=None,
+        num_samples: int = 10000,
     ):
         self.root_dir = root_dir
         self.split_dir = self.root_dir / split
@@ -125,6 +35,9 @@ class AFHQ(Dataset):
 
         self.images_0 = list(self.dog_dir.rglob("*.[jpg jpeg]*"))
         self.images_1 = list(self.cat_dir.rglob("*.[jpg jpeg]*"))
+
+        self.images_0 = self.images_0[:num_samples]
+        self.images_1 = self.images_1[:num_samples]
 
         if file_list_path is not None:
             files_list = read_file_list(file_list_path)
@@ -193,87 +106,10 @@ class TextualInversionAFHQ(AFHQ):
         return image, prompt, label, str(img_path)
 
 
-class FFHQ(Dataset):
-    def __init__(
-        self,
-        root_dir: Path,
-        classes: list = ["15-19", "70-120"],
-        labels_path: Optional[Path] = None,
-        transform=None,
-    ):
-        self.root_dir = root_dir
-        self.image_dir = root_dir / "images"
-        self.transform = transform
-        if labels_path is None:
-            labels_path = root_dir / "ffhq_aging_labels.csv"
-
-        labels_df = pd.read_csv(labels_path)
-        class_images = []
-        for cls_name in classes:
-            image_names_from_labels = labels_df[labels_df["age_group"] == cls_name][
-                "image_number"
-            ].to_list()
-            class_images.append(image_names_from_labels)
-
-        self.image_list = [
-            self.get_image_path(x) for sublist in class_images for x in sublist
-        ]
-        labels = []
-        for i, sublist in enumerate(class_images):
-            labels += [i] * len(sublist)
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.image_list)
-
-    def __getitem__(self, idx):
-        img_path = self.image_list[idx]
-        image = process_image(img_path)
-        label = self.labels[idx]
-
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
-    def get_image_path(self, image_name: Union[str, int]):
-        return self.image_dir / f"{str(image_name).zfill(5)}.png"
 
 
-class TextualInversionFFHQ(FFHQ):
-    def __init__(
-        self,
-        root_dir: Path,
-        placeholder_str: list[str],
-        classes: list = ["15-19", "70-120"],
-        labels_path: Optional[Path] = None,
-        use_prefix: bool = False,
-        transform=None,
-    ):
-        super().__init__(root_dir, classes, labels_path, transform)
-        self.placeholder_str = placeholder_str
-        self.use_prefix = use_prefix
-
-    def __getitem__(self, idx):
-        image, prompt = get_sample_with_prompts(
-            idx, self.image_list, self.placeholder_str, self.use_prefix, self.transform
-        )
-        label = self.labels[idx]
-        return image, prompt, label
-
-
-class Yearbook(Dataset):
-    ALL_CLASSES = [
-        "1930",
-        "1940",
-        "1950",
-        "1960",
-        "1970",
-        "1980",
-        "1990",
-        "2000",
-        "2010",
-    ]
+class KikiBouba(Dataset):
+    ALL_CLASSES = ["kiki", "bouba"]
 
     def __init__(
         self,
@@ -281,42 +117,38 @@ class Yearbook(Dataset):
         split: str,
         classes: Optional[list[str]] = None,
         file_list_path: Optional[Path] = None,
-        gender: str = "F",
         transform=None,
+        num_samples: int = 10000,
     ):
-        """
-        classes should be a list of decade strings, e.g 1960, 1990, 2010, etc.
-        If None, take all images from all decades.
-        """
         self.root_dir = root_dir
-        self.image_dir = root_dir / gender
+        self.split_dir = self.root_dir / split
         self.transform = transform
+        self.dir_0 = self.split_dir / self.ALL_CLASSES[0][:num_samples]
+        self.dir_1 = self.split_dir / self.ALL_CLASSES[1][:num_samples]
+
+        self.images_0 = list(self.dir_0.rglob("*.jpg"))
+        self.images_1 = list(self.dir_1.rglob("*.jpg"))
+
+        if file_list_path is not None:
+            files_list = read_file_list(file_list_path)
+            self.images_0 = [x for x in self.images_0 if x.name in files_list]
+            self.images_1 = [x for x in self.images_1 if x.name in files_list]
+
+        if classes is not None and len(classes) == 1:
+            if classes[0] == self.ALL_CLASSES[0]:
+                self.image_list = self.images_0
+                self.labels = [0] * len(self.image_list)
+            elif classes[0] == self.ALL_CLASSES[1]:
+                self.image_list = self.images_1
+                self.labels = [1] * len(self.image_list)
+        else:
+            self.image_list = self.images_0 + self.images_1
+            self.labels = [0] * len(self.images_0) + [1] * len(self.images_1)
+
         if classes is None:
             classes = self.ALL_CLASSES
         self.num_classes = len(classes)
         self.classes = classes
-
-        split_file = self.root_dir / f"{split}_{gender}.txt"
-        split_lines = read_txt(split_file)
-
-        full_images_list = [self.root_dir / str(x).split(" ")[0] for x in split_lines]
-        image_list, labels = [], []
-        for image_path in full_images_list:
-            sample_year = image_path.name.split("_")[0]
-            for i, class_year in enumerate(classes):
-                if (
-                    int(sample_year) >= int(class_year)
-                    and int(sample_year) < int(class_year) + 10
-                ):
-                    image_list.append(image_path)
-                    labels.append(i)
-
-        self.image_list = image_list
-        self.labels = labels
-
-        if file_list_path is not None:
-            files_list = read_file_list(file_list_path)
-            self.image_list = [x for x in self.image_list if x.name in files_list]
 
     def __len__(self):
         return len(self.image_list)
@@ -331,46 +163,6 @@ class Yearbook(Dataset):
 
         return image, label, str(img_path)
 
-
-class TextualInversionYearbook(Yearbook):
-    def __init__(
-        self,
-        root_dir: Path,
-        split: str,
-        classes: Optional[list[str]] = None,
-        placeholder_str: Optional[list[str]] = None,
-        use_prefix: bool = False,
-        gender: str = "F",
-        transform=None,
-    ):
-        super().__init__(
-            root_dir=root_dir,
-            split=split,
-            classes=classes,
-            gender=gender,
-            transform=transform,
-        )
-        if placeholder_str is None:
-            if classes is None:
-                placeholder_str = self.ALL_CLASSES
-            else:
-                placeholder_str = classes
-        self.placeholder_str = placeholder_str
-        self.use_prefix = use_prefix
-
-    def __getitem__(self, idx):
-        img_path = self.image_list[idx]
-        label = self.labels[idx]
-        image, prompt = get_sample_with_prompts(
-            idx,
-            self.image_list,
-            self.placeholder_str[label],
-            self.use_prefix,
-            self.transform,
-        )
-        return image, prompt, label, str(img_path)
-
-
 class KikiBouba(Dataset):
     ALL_CLASSES = ["kiki", "bouba"]
 
@@ -381,12 +173,13 @@ class KikiBouba(Dataset):
         classes: Optional[list[str]] = None,
         file_list_path: Optional[Path] = None,
         transform=None,
+        num_samples: int = 10000,
     ):
         self.root_dir = root_dir
         self.split_dir = self.root_dir / split
         self.transform = transform
-        self.dir_0 = self.split_dir / self.ALL_CLASSES[0]
-        self.dir_1 = self.split_dir / self.ALL_CLASSES[1]
+        self.dir_0 = self.split_dir / self.ALL_CLASSES[0][:num_samples]
+        self.dir_1 = self.split_dir / self.ALL_CLASSES[1][:num_samples]
 
         self.images_0 = list(self.dir_0.rglob("*.jpg"))
         self.images_1 = list(self.dir_1.rglob("*.jpg"))
@@ -460,7 +253,6 @@ class TextualInversionKikiBouba(KikiBouba):
 
 class Butterfly(Dataset):
     ALL_CLASSES = ["Monarch", "Viceroy"]
-    MAX_SAMPLES = int(1e4)
 
     def __init__(
         self,
@@ -468,8 +260,10 @@ class Butterfly(Dataset):
         split: str,
         classes: Optional[list[str]] = None,
         file_list_path: Optional[Path] = None,
+        num_samples: int = 10000,
         transform=None,
     ):
+        self.MAX_SAMPLES = num_samples
         if split == "val":
             split = "test"
         self.root_dir = root_dir
@@ -560,6 +354,7 @@ class BlackHolesMadSane(Dataset):
         classes: Optional[list[str]] = None,
         file_list_path: Optional[Path] = None,
         transform=None,
+        num_samples: int = 10000,
     ):
         if split == "val":
             split = "test"
@@ -569,8 +364,8 @@ class BlackHolesMadSane(Dataset):
         self.dir_0 = self.split_dir / self.ALL_CLASSES[0]
         self.dir_1 = self.split_dir / self.ALL_CLASSES[1]
 
-        self.images_0 = list(self.dir_0.rglob("*.npy"))
-        self.images_1 = list(self.dir_1.rglob("*.npy"))
+        self.images_0 = list(self.dir_0.rglob("*.npy"))[:num_samples]
+        self.images_1 = list(self.dir_1.rglob("*.npy"))[:num_samples]
 
         if file_list_path is not None:
             files_list = read_file_list(file_list_path)
@@ -653,7 +448,6 @@ class TextualInversionBlackHolesMadSane(BlackHolesMadSane):
 
 class Kermany(Dataset):
     ALL_CLASSES = ["DRUSEN", "NORMAL"]
-    MAX_SAMPLES = int(1e4)
 
     def __init__(
         self,
@@ -868,9 +662,10 @@ def get_ti_dataset_by_name(cfg: InstructInversionBPTTConfig, dataset_transforms:
 
 def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
     train_transform, val_transform = dataset_transforms
+    
     if cfg.name == "afhq":
         dataset = AFHQ(
-            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
         )
 
         eval_dataset = AFHQ(
@@ -881,14 +676,87 @@ def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
             file_list_path=cfg.file_list_path,
         )
 
+    elif cfg.name == "spawrious":
+        dataset = SpawriousSimple(
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
+        )
+        # eval_dataset = SpawriousSimple(
+        #     cfg.image_dir, transform=val_transform, split="test", classes=cfg.classes, file_list_path=cfg.file_list_path
+        # )
+        eval_dataset = SpawriousSimple(
+            cfg.image_dir, transform=val_transform, split="val", classes=cfg.classes, file_list_path=cfg.file_list_path
+        )
+
+    elif cfg.name == "inaturalist":
+        
+        dataset = INatDatasetJoint(
+            cfg.image_dir, transform=train_transform, cindset =cfg.classes, split="train", train_subset=cfg.train_subset)
+        
+        
+        eval_dataset = INatDatasetJoint(
+            cfg.image_dir,
+            transform=val_transform,
+            cindset=cfg.classes, 
+            split="val",
+        )
+
+    elif cfg.name == "kermany":
+        dataset = Kermany(
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
+        )
+        eval_dataset = Kermany(
+            cfg.image_dir,
+            transform=val_transform,
+            split="val",
+            classes=cfg.classes,
+            file_list_path=cfg.file_list_path,
+        )
+
+    elif cfg.name == "celebahq":
+        dataset = CelebAHQ(
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
+        )
+        eval_dataset = CelebAHQ(
+            cfg.image_dir,
+            transform=val_transform,
+            split="test",
+            classes=cfg.classes,
+            file_list_path=cfg.file_list_path,
+        )
+
+    elif cfg.name == "celebahqyoung":
+        dataset = CelebAHQYoung(
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, 
+        )
+        cfg.file_list_path = None
+        eval_dataset = CelebAHQYoung(
+            cfg.image_dir,
+            transform=val_transform,
+            split="test",
+            classes=cfg.classes,
+            file_list_path=cfg.file_list_path,
+        )
+
     elif cfg.name == "kikibouba":
         dataset = KikiBouba(
-            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
         )
         eval_dataset = KikiBouba(
             cfg.image_dir,
             transform=val_transform,
             split="val",
+            classes=cfg.classes,
+            file_list_path=cfg.file_list_path,
+        )
+
+    elif cfg.name == "celebahqyoung":
+        dataset = CelebAHQYoung(
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes
+        )
+        eval_dataset = CelebAHQYoung(
+            cfg.image_dir,
+            transform=val_transform,
+            split="test",
             classes=cfg.classes,
             file_list_path=cfg.file_list_path,
         )
@@ -939,7 +807,7 @@ def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
 
     elif cfg.name == "butterfly":
         dataset = Butterfly(
-            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
         )
         eval_dataset = Butterfly(
             cfg.image_dir,
@@ -951,7 +819,7 @@ def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
 
     elif cfg.name == "mad_sane":
         dataset = BlackHolesMadSane(
-            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes
+            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
         )
         eval_dataset = BlackHolesMadSane(
             cfg.image_dir,
@@ -961,18 +829,6 @@ def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
             file_list_path=cfg.file_list_path,
         )
 
-    elif cfg.name == "kermany":
-        dataset = Kermany(
-            cfg.image_dir, split="train", classes=cfg.classes, transform=train_transform
-        )
-
-        eval_dataset = Kermany(
-            cfg.image_dir,
-            split="test",
-            classes=cfg.classes,
-            file_list_path=cfg.file_list_path,
-            transform=val_transform,
-        )
     else:
         raise ValueError(f"Unsupported dataset: {cfg.name}")
     return dataset, eval_dataset
@@ -1296,17 +1152,13 @@ class ImagesBase(Dataset):
     def __init__(
         self,
         root_dir: Path,
-        recursive: bool = True,
         transform=None,
     ):
         self.root_dir = root_dir
         self.transform = transform
         image_files = []
         for ext in ("*.jpg", "*.png", "*.jpeg"):
-            if recursive:
-                image_files.extend(self.root_dir.rglob(ext))
-            else:
-                image_files.extend(self.root_dir.glob(ext))
+            image_files.extend(self.root_dir.rglob(ext))
         self.image_list = image_files
 
     def __len__(self):
@@ -1319,7 +1171,7 @@ class ImagesBase(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, str(img_path)
+        return image
 
 
 class TextualInversionImagesBase(ImagesBase):
@@ -1369,6 +1221,202 @@ class ZeroInversionAFHQ(AFHQ):
 
         return image, prompt, label, caption, str(img_path)
 
+
+class CelebAHQ(Dataset):
+    ALL_CLASSES = ["serious", "smiling"]
+
+    def __init__(
+        self,
+        root_dir: Path,
+        split: str,
+        classes: Optional[list[str]] = None,
+        file_list_path: Optional[Path] = None,
+        transform=None,
+        num_samples: Optional[int] = None,
+    ):
+        """
+        Args:
+            root_dir (Path): Path to CelebAHQ dataset root
+            split (str): 'train', 'val', or 'test'
+            classes (list[str]): ["smiling"] or ["not_smiling"] or both
+            transform: Optional transform to be applied on images
+        """
+        self.root_dir = Path(root_dir)
+        self.transform = transform
+        
+        # Read annotation files
+        with open(self.root_dir / 'CelebAMask-HQ-attribute-anno.txt', 'r') as f:
+            datastr = f.read()[6:]
+            datastr = 'idx ' + datastr.replace('  ', ' ')
+
+        with open(self.root_dir / 'CelebA-HQ-to-CelebA-mapping.txt', 'r') as f:
+            mapstr = f.read()
+            mapstr = [i for i in mapstr.split(' ') if i != '']
+        mapstr = ' '.join(mapstr)
+
+        # Process dataframes
+        data = pd.read_csv(StringIO(datastr), sep=' ')
+        partition_df = pd.read_csv(self.root_dir / 'list_eval_partition.csv')
+        mapping_df = pd.read_csv(StringIO(mapstr), sep=' ')
+        
+        # Fix column names for merging
+        mapping_df['image_id'] = mapping_df['orig_file'].str.replace('.jpg', '')
+        partition_df['image_id'] = partition_df['filename'].str.replace('.jpg', '')
+        partition_df = pd.merge(mapping_df, partition_df, on='image_id')
+
+        # Map split name to partition number
+        split_map = {'train': 0, 'val': 1, 'test': 2}
+        if split not in split_map:
+            raise ValueError(f"Split must be one of {list(split_map.keys())}")
+            
+        # Filter data by split
+        self.data = data[partition_df['partition'] == split_map[split]]
+        if num_samples is not None:
+            self.data = self.data.sample(n=num_samples, random_state=42)
+        self.data.reset_index(inplace=True)
+        self.data.replace(-1, 0, inplace=True)
+        
+        # Smiling attribute is at index 31 (0-based)
+        smile_labels = self.data.iloc[:, 2:].to_numpy()[:, 31]
+        
+        # Create image list based on classes
+        all_images = [(f"{idx}", label) 
+                     for idx, label in zip(self.data['idx'], smile_labels)]
+        
+        # Filter by file list if provided
+        if file_list_path is not None:
+            with open(file_list_path, 'r') as f:
+                files_list = set(line.strip() for line in f.readlines())
+            all_images = [(img, label) for img, label in all_images if img in files_list]
+
+        self.image_list, self.labels = zip(*all_images)
+        self.image_list = [self.root_dir / 'CelebA-HQ-img' / img for img in self.image_list]
+        
+        if classes is None:
+            classes = self.ALL_CLASSES
+        self.num_classes = len(classes)
+        self.classes = classes
+        
+        print(f"Loaded {len(self.image_list)} images for {split} split")
+        self._print_class_distribution()
+
+    def _print_class_distribution(self):
+        """Print the distribution of classes in the loaded dataset"""
+        class_counts = Counter(self.labels)
+        print(f"Not Smiling: {class_counts[0]} images")
+        print(f"Smiling: {class_counts[1]} images")
+
+    def __len__(self):
+        return len(self.image_list)
+
+    def __getitem__(self, idx):
+        
+        img_path = self.image_list[idx]
+        image = Image.open(img_path).convert('RGB')
+        label = self.labels[idx]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label, str(img_path)
+    
+
+class CelebAHQYoung(Dataset):
+    ALL_CLASSES = ["old", "young"]
+
+    def __init__(
+        self,
+        root_dir: Path,
+        split: str,
+        classes: Optional[list[str]] = None,
+        file_list_path: Optional[Path] = None,
+        transform=None,
+    ):
+        """
+        Args:
+            root_dir (Path): Path to CelebAHQ dataset root
+            split (str): 'train', 'val', or 'test'
+            classes (list[str]): ["smiling"] or ["not_smiling"] or both
+            transform: Optional transform to be applied on images
+        """
+        self.root_dir = Path(root_dir)
+        self.transform = transform
+        
+        # Read annotation files
+        with open(self.root_dir / 'CelebAMask-HQ-attribute-anno.txt', 'r') as f:
+            datastr = f.read()[6:]
+            datastr = 'idx ' + datastr.replace('  ', ' ')
+
+        with open(self.root_dir / 'CelebA-HQ-to-CelebA-mapping.txt', 'r') as f:
+            mapstr = f.read()
+            mapstr = [i for i in mapstr.split(' ') if i != '']
+        mapstr = ' '.join(mapstr)
+
+        # Process dataframes
+        data = pd.read_csv(StringIO(datastr), sep=' ')
+        partition_df = pd.read_csv(self.root_dir / 'list_eval_partition.csv')
+        mapping_df = pd.read_csv(StringIO(mapstr), sep=' ')
+        
+        # Fix column names for merging
+        mapping_df['image_id'] = mapping_df['orig_file'].str.replace('.jpg', '')
+        partition_df['image_id'] = partition_df['filename'].str.replace('.jpg', '')
+        partition_df = pd.merge(mapping_df, partition_df, on='image_id')
+
+        # Map split name to partition number
+        split_map = {'train': 0, 'val': 1, 'test': 2}
+        if split not in split_map:
+            raise ValueError(f"Split must be one of {list(split_map.keys())}")
+            
+        # Filter data by split
+        self.data = data[partition_df['partition'] == split_map[split]]
+        self.data.reset_index(inplace=True)
+        self.data.replace(-1, 0, inplace=True)
+        
+        # Age attribute is at index 39 (0-based)
+        age_labels = self.data.iloc[:, 2:].to_numpy()[:, 39]
+        
+        # Create image list based on classes
+        all_images = [(f"generated_{idx}", label) 
+                     for idx, label in zip(self.data['idx'], age_labels)]
+        
+        # Filter by file list if provided
+        if file_list_path is not None:
+            with open(file_list_path, 'r') as f:
+                files_list = set(line.strip() for line in f.readlines())
+            #import pdb; pdb.set_trace()
+            all_images = [(img, label) for img, label in all_images if img in files_list]
+
+        # else:
+        self.image_list, self.labels = zip(*all_images)
+        self.image_list = [self.root_dir / 'CelebA-HQ-img' / img.replace('generated_', '') for img in self.image_list]
+        
+        if classes is None:
+            classes = self.ALL_CLASSES
+        self.num_classes = len(classes)
+        self.classes = classes
+        
+        print(f"Loaded {len(self.image_list)} images for {split} split")
+        self._print_class_distribution()
+
+    def _print_class_distribution(self):
+        """Print the distribution of classes in the loaded dataset"""
+        class_counts = Counter(self.labels)
+        print(f"Not Smiling: {class_counts[0]} images")
+        print(f"Smiling: {class_counts[1]} images")
+
+    def __len__(self):
+        return len(self.image_list)
+
+    def __getitem__(self, idx):
+        
+        img_path = self.image_list[idx]
+        image = Image.open(img_path).convert('RGB')
+        label = self.labels[idx]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label, str(img_path)
 
 class CelebA(Dataset):
 
@@ -1499,83 +1547,144 @@ class CelebA(Dataset):
         return image, label
 
 
-def _get_combinations(benchmark_type: str) -> Tuple[dict, dict]:
-    combinations = {
-        "o2o_easy": (
-            ["desert", "jungle", "dirt", "snow"],
-            ["dirt", "snow", "desert", "jungle"],
-            "beach",
-        ),
-        "o2o_medium": (
-            ["mountain", "beach", "dirt", "jungle"],
-            ["jungle", "dirt", "beach", "snow"],
-            "desert",
-        ),
-        # "o2o_hard": (
-        #     ["beach", "snow"],
-        #     ["snow", "desert"],
-        #     "beach",
-        # ),
-        "o2o_hard": (
-            ["jungle", "mountain", "snow", "desert"],
-            ["mountain", "snow", "desert", "jungle"],
-            "beach",
-        ),
-        "m2m_hard": (
-            ["dirt", "jungle", "snow", "beach"],
-            ["snow", "beach", "dirt", "jungle"],
-            None,
-        ),
-        "m2m_easy": (
-            ["desert", "mountain", "dirt", "jungle"],
-            ["dirt", "jungle", "mountain", "desert"],
-            None,
-        ),
-        "m2m_medium": (
-            ["beach", "snow", "mountain", "desert"],
-            ["desert", "mountain", "beach", "snow"],
-            None,
-        ),
-    }
-    if benchmark_type not in combinations:
-        raise ValueError("Invalid benchmark type")
-    group, test, filler = combinations[benchmark_type]
-    return build_combination(benchmark_type, group, test, filler)
 
+class INatDatasetJoint(Dataset):
+    def __init__(self, root_dir, cindset=[6372, 6375], split='train', transform=None, train_subset=None):
+        self.root_dir = root_dir
+        self.split = split
+        self.train_subset = train_subset  # Can be 'train1', 'train2', or None
+        
+        # Use base split (train or val) for directory structure
+        base_split = 'train' if split.startswith('train') else split
+        self.imgdir = os.path.join(root_dir, base_split)
+        self.bbox_dir = os.path.join(root_dir, f"{base_split}_bbox")
 
-def build_combination(benchmark_type, group, test, filler=None):
-    total = 3168
-    combinations = {}
-    if "m2m" in benchmark_type:
-        counts = [total, total]
-        combinations["train_combinations"] = {
-            ("bulldog",): [(group[0], counts[0]), (group[1], counts[1])],
-            ("dachshund",): [(group[1], counts[0]), (group[0], counts[1])],
-            ("labrador",): [(group[2], counts[0]), (group[3], counts[1])],
-            ("corgi",): [(group[3], counts[0]), (group[2], counts[1])],
-        }
-        combinations["test_combinations"] = {
-            ("bulldog",): [test[0], test[1]],
-            ("dachshund",): [test[1], test[0]],
-            ("labrador",): [test[2], test[3]],
-            ("corgi",): [test[3], test[2]],
-        }
-    else:
-        counts = [int(0.97 * total), int(0.87 * total)]
-        combinations["train_combinations"] = {
-            ("bulldog",): [(group[0], counts[0]), (group[0], counts[1])],
-            ("dachshund",): [(group[1], counts[0]), (group[1], counts[1])],
-            ("labrador",): [(group[2], counts[0]), (group[2], counts[1])],
-            ("corgi",): [(group[3], counts[0]), (group[3], counts[1])],
-            ("bulldog", "dachshund", "labrador", "corgi"): [
-                (filler, total - counts[0]),
-                (filler, total - counts[1]),
-            ],
-        }
-        combinations["test_combinations"] = {
-            ("bulldog",): [test[0], test[0]],
-            ("dachshund",): [test[1], test[1]],
-            ("labrador",): [test[2], test[2]],
-            ("corgi",): [test[3], test[3]],
-        }
-    return combinations
+        self.metafile = os.path.join(root_dir, base_split+'.json')
+        self.transform = transform
+
+        with open(self.metafile) as ifd:
+            self.metadata = json.load(ifd)
+
+        self.images = {tmp['id']: tmp for tmp in self.metadata['images']}
+        self.temp = [tmp['class'] for tmp in self.metadata['categories']]
+        self.num_classes = len(cindset)
+        
+        self.classes = [tmp['common_name'] for tmp in self.metadata['categories'] if tmp['id'] in cindset]
+        self.scientific_name = [tmp['name'] for tmp in self.metadata['categories']  if tmp['id'] in cindset]
+        combined_name = set(['{} ({})'.format(sn, cn) for sn, cn in zip(self.scientific_name, self.classes)])
+        self.classinds = [tmp['id'] for tmp in self.metadata['categories'] if tmp['id'] in cindset]
+        self.classindsboth = [tmp['id'] for tmp in self.metadata['categories'] if tmp['id'] in [6372, 6375]]
+
+        self.annotation = [tmp for tmp in self.metadata['annotations'] if tmp["category_id"] in cindset]
+        imgset = set([tmp["image_id"] for tmp in self.annotation])
+        self.images = {k:v for k,v in self.images.items() if k in imgset}
+        
+        # If this is a train subset, select appropriate portion of images
+        if self.train_subset:
+            # Convert images dict to list for easier splitting
+            images_list = list(self.images.items())
+            # Sort by key for reproducibility
+            images_list.sort(key=lambda x: x[0])
+            
+            if self.train_subset == 'train1':
+                # Take first 200 images
+                images_list = images_list[:200]
+            elif self.train_subset == 'train2':
+                # Take next 100 images
+                images_list = images_list[200:300]
+            
+            # Convert back to dict
+            self.images = dict(images_list)
+            
+            # Update annotations to only include selected images
+            selected_image_ids = set(self.images.keys())
+            self.annotation = [ann for ann in self.annotation if ann["image_id"] in selected_image_ids]
+
+        with open(os.path.join(self.root_dir, 'cbd_descriptors.json')) as ifd:
+            self.cbd_descriptors = json.load(ifd)
+        self.cbd_descriptors = {k:v for k,v in self.cbd_descriptors.items() if k in combined_name}
+        self.common_name = {i:name for i, name in enumerate(self.classes)}
+        self.classindmap = {i:ind for ind, i in enumerate(self.classindsboth)}
+        print(f"Split: {split}, Subset: {train_subset if train_subset else 'None'}, Images: {len(self.images)}")
+        self.generated = [0 for _ in range(len(self.images))]
+
+        assert len(self.annotation)==len(self.images)
+        assert len(self.cbd_descriptors)==len(self.classes)
+        self.image_list = [os.path.join(self.root_dir, self.images[anno["image_id"]]['file_name']) for anno in self.annotation]
+        self.labels = [self.classindmap[int(anno["category_id"])] for anno in self.annotation]
+        
+    def __len__(self):
+        return len(self.image_list)
+    
+
+    def resize_bbox(self, bbox, original_size, new_size):
+        """
+        Resize bbox coordinates based on image resize ratio
+        bbox: [x1, y1, x2, y2]
+        original_size: (height, width)
+        new_size: (height, width)
+        """
+        x1, y1, x2, y2 = bbox
+        
+        # Calculate resize ratio
+        h_ratio = new_size[0] / original_size[0]
+        w_ratio = new_size[1] / original_size[1]
+        
+        # Apply ratio to bbox coordinates
+        new_x1 = int(x1 * w_ratio)
+        new_y1 = int(y1 * h_ratio)
+        new_x2 = int(x2 * w_ratio)
+        new_y2 = int(y2 * h_ratio)
+        
+        return [new_x1, new_y1, new_x2, new_y2]
+    
+
+    def expand_bbox(self, bbox, padding, image_shape):
+        """
+        Expand bbox by adding fixed padding on all sides while keeping it within image bounds
+        bbox: [x1, y1, x2, y2]
+        padding: int (number of pixels to add on each side)
+        image_shape: (height, width, channels)
+        """
+        x1, y1, x2, y2 = bbox
+        
+        # Add padding to all sides
+        new_x1 = x1 - padding
+        new_y1 = y1 - padding
+        new_x2 = x2 + padding
+        new_y2 = y2 + padding
+        
+        # Clip to image bounds
+        new_x1 = max(0, min(new_x1, image_shape[2]))
+        new_y1 = max(0, min(new_y1, image_shape[1]))
+        new_x2 = max(0, min(new_x2, image_shape[2]))
+        new_y2 = max(0, min(new_y2, image_shape[1]))
+
+    
+        return [new_x1, new_y1, new_x2, new_y2]
+
+    def __getitem__(self, idx):
+        anno = self.annotation[idx]
+        img = self.images[anno["image_id"]]
+        label = self.classindmap[int(anno["category_id"])]
+        
+        # Load image
+        if self.generated[idx] == 1:
+            image_path = os.path.join("/proj/vondrick2/mia/magnification", img['file_name'])
+        else:
+            image_path = os.path.join(self.root_dir, img['file_name'])
+        
+        image = Image.open(image_path).convert('RGB')
+        original_size = image.size[::-1]
+
+        if self.transform:
+            image = self.transform(image)
+            new_size = tuple(image.shape[1:])
+        
+        return image, label, img['file_name']
+
+    def get_desc_byid(self, id):
+        name = self.scientific_name[id]
+        common_name = self.classes[id]
+        key = '{} ({})'.format(name, common_name)
+        return self.cbd_descriptors[key]

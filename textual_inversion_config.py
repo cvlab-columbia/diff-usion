@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Union, List
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -21,11 +21,16 @@ class DatasetConfig:
     synset_ids: Optional[List[str]] = None
     eval_dir: Optional[Path] = None
     repeats: Optional[int] = 1
-    img_size: Optional[int] = 256
+    img_size: Optional[int] = 512
     subset: Optional[int] = None
     use_prefix: Optional[bool] = False
     classes: Optional[list] = None
-    file_list_path: Optional[Path] = None
+    difficulty: Optional[str] = None
+    index: Optional[int] = None
+    bbox_dir: Optional[Path] = None
+    num_samples: Optional[int] = None
+    train_subset: Optional[str] = None
+
 
 
 @dataclass
@@ -121,6 +126,7 @@ class EvalConfig:
     guidance_scale: Optional[float] = 7.5
     image_guidance_scale: Optional[float] = 1.5
     clf_weights: Optional[Path] = None
+    lora_path: Optional[Path] = None
 
     def __post_init__(self):
         self.output_dir.mkdir(exist_ok=True, parents=True)
@@ -136,6 +142,10 @@ class ClassifierTrainConfig:
     patience: int
     device: int
     clf_weights: Optional[Path] = None
+    classes: Optional[list] = None
+    file_list_paths: Optional[list[Path]] = None
+    clip_image_embeds_dir: Optional[Path] = None
+
 
     def __post_init__(self):
         self.log_dir.mkdir(exist_ok=True, parents=True)
@@ -157,6 +167,34 @@ class ZeroInversionBPTTConfig:
     def __post_init__(self):
         self.log_dir.mkdir(exist_ok=True, parents=True)
 
+# @dataclass
+# class KandinskyEvalConfig:
+#     batch_size: int    
+#     dataset: DatasetConfig
+#     output_dir: Path
+#     batch_size: int
+#     skip: float
+#     guidance: int
+#     alpha: float
+#     embed_filenames: Optional[list[str]] = None
+#     device: Optional[int] = 0
+#     num_inference_steps: Optional[int] = 100
+#     guidance_scale: Optional[float] = 7.5
+#     clf_weights: Optional[Path] = None
+#     num_validation_images: Optional[int] = None
+#     eval_clf_weights: Optional[Path] = None
+#     clip_image_embeds_dir: Optional[Path] = None
+#     debug: Optional[bool] = False
+#     manipulation_mode: Optional[str] = None
+#     manipulation_scale: Optional[float] = None
+#     target: Optional[int] = None
+#     lora_weights_dir: Optional[Path] = None
+#     is_lora: Optional[bool] = False
+
+    
+#     def __post_init__(self):
+#         self.output_dir.mkdir(exist_ok=True, parents=True)
+
 
 @dataclass
 class KandinskyEvalConfig:
@@ -177,7 +215,80 @@ class KandinskyEvalConfig:
 
     def __post_init__(self):
         self.output_dir.mkdir(exist_ok=True, parents=True)
+        
+@dataclass
+class P2PZeroEvalConfig:
+    dataset: DatasetConfig
+    output_dir: Path
+    source_prompt: str  
+    target_prompt: str
+    batch_size: int
+    target: int
+    device: Optional[int] = 0
+    num_inference_steps: Optional[int] = 100
+    guidance_scale: Optional[float] = 7.5
+    cross_attention_guidance_amount: Optional[float] = 0.10
+    clf_weights: Optional[Path] = None
+    clip_image_embeds_dir: Optional[Path] = None
+    debug: Optional[bool] = False
+    cfg_path: Optional[Path] = None
+    
 
+    llava: bool = False
+    
+    def __post_init__(self):
+        self.output_dir.mkdir(exist_ok=True, parents=True)
+
+@dataclass
+class DDPMEFEvalConfig:
+    skip: int
+    cfg_tar: float
+    cfg_src: float
+    source_prompt: str
+    target_prompt: str
+    num_diffusion_steps: int
+    xa: float
+    sa: float
+    batch_size: int
+    eta: int
+    target: int
+    mode: str
+    
+    dataset: DatasetConfig
+    output_dir: Path
+    batch_size: int
+    device: Optional[int] = 0
+    num_inference_steps: Optional[int] = 100
+    guidance_scale: Optional[float] = 7.5
+    clf_weights: Optional[Path] = None
+    clip_image_embeds_dir: Optional[Path] = None
+    debug: Optional[bool] = False
+    llava: bool = False
+    cfg_path: Optional[Path] = None
+    
+    def __post_init__(self):
+        self.output_dir.mkdir(exist_ok=True, parents=True)
+
+@dataclass
+class InstrP2PEvalConfig:
+    batch_size: int
+    guidance_scale: float
+    image_guidance_scale: float
+    source_prompt: str
+    target_prompt: str
+    dataset: DatasetConfig
+    output_dir: Path
+    target: int
+    device: int = 0
+    num_inference_steps: int = 100
+    clf_weights: Optional[Path] = None
+    clip_image_embeds_dir: Optional[Path] = None
+    debug: bool = False
+    llava: bool = False
+    
+
+    def __post_init__(self):
+        self.output_dir.mkdir(exist_ok=True, parents=True)
 
 @dataclass
 class KandinskyLoRAConfig:
@@ -201,7 +312,7 @@ class KandinskyLoRAConfig:
     snr_gamma: Optional[float] = None
     allow_tf32: Optional[bool] = True
     dataloader_num_workers: Optional[int] = 0
-    num_validation_images: Optional[int] = 8
+    num_validation_images: Optional[int] = 4
 
     adam_beta1: Optional[float] = 0.9
     adam_beta2: Optional[float] = 0.999
@@ -213,7 +324,7 @@ class KandinskyLoRAConfig:
     max_grad_norm: Optional[float] = 1.0
     mixed_precision: Optional[str] = "no"
     report_to: Optional[str] = "wandb"
-    checkpointing_steps: Optional[int] = 500
+    checkpointing_steps: Optional[int] = 100
     checkpoints_total_limit: Optional[int] = None
     resume_from_checkpoint: Optional[str] = None
     local_rank: Optional[int] = 1
@@ -225,17 +336,19 @@ class KandinskyLoRAConfig:
     hub_model_id: Optional[str] = None
 
     num_gpus: Optional[int] = None
-
+    
     # sliders
     guidance_scale: Optional[int] = 1.0
     max_denoising_steps: Optional[int] = 50
     clf_weights: Optional[Path] = None
     clip_embeds_dir: Optional[Path] = None
     embed_filenames: Optional[list[str]] = None
+    validation_epochs: Optional[int] = 100
+    file_list_paths: Optional[list[Path]] = None
+    lora_weights_dir: Optional[Path] = None
 
     def __post_init__(self):
         self.output_dir.mkdir(exist_ok=True, parents=True)
-
 
 @dataclass
 class SDLoRAConfig:
@@ -255,7 +368,7 @@ class SDLoRAConfig:
     allow_tf32: Optional[bool] = True
     dataloader_num_workers: Optional[int] = 0
     num_validation_images: Optional[int] = 8
-    validation_epochs: Optional[int] = 1
+    validation_epochs: Optional[int] = 100
 
     adam_beta1: Optional[float] = 0.9
     adam_beta2: Optional[float] = 0.999
@@ -288,6 +401,33 @@ class SDLoRAConfig:
 
 
 @dataclass
+class UnifiedEvalConfig:
+    ddpmef: Optional[DDPMEFEvalConfig]
+    instrp2p: Optional[InstrP2PEvalConfig]
+    pix2pixzero: Optional[P2PZeroEvalConfig]
+    ours: Optional[KandinskyEvalConfig]
+    method: str
+    device: int
+
+@dataclass
+class SDEvalConfig:
+    dataset: DatasetConfig
+    output_dir: Path
+    batch_size: int
+    num_vectors: int
+    device: Optional[int] = 0
+    num_inference_steps: Optional[int] = 100
+    num_validation_images: Optional[int] = 8
+    text_embeds_path: Optional[Path] = None
+    lora_weights_dir: Optional[Path] = None
+    eval_clf_weights: Optional[Path] = None
+    file_list_paths: Optional[list[Path]] = None
+    analyze_results: Optional[bool] = True
+
+    def __post_init__(self):
+        self.output_dir.mkdir(exist_ok=True, parents=True)
+
+@dataclass
 class TrainSDTextualInversionConfig:
     dataset: DatasetConfig
     train_batch_size: int
@@ -297,7 +437,6 @@ class TrainSDTextualInversionConfig:
     placeholder_token: list[str]
     init_words: list[str]
     train_unet: bool
-    context_prompt: Optional[str] = None
 
     # How many textual inversion vectors shall be used to learn the concept
     num_vectors: Optional[int] = 1
@@ -340,25 +479,6 @@ class TrainSDTextualInversionConfig:
     # LoRA
     rank: Optional[int] = 4
     lora_alpha: Optional[float] = 4.0
-
-    def __post_init__(self):
-        self.output_dir.mkdir(exist_ok=True, parents=True)
-
-
-@dataclass
-class SDEvalConfig:
-    dataset: DatasetConfig
-    output_dir: Path
-    batch_size: int
-    num_vectors: int
-    device: Optional[int] = 0
-    num_inference_steps: Optional[int] = 100
-    num_validation_images: Optional[int] = 8
-    text_embeds_path: Optional[Path] = None
-    lora_weights_dir: Optional[Path] = None
-    eval_clf_weights: Optional[Path] = None
-    file_list_paths: Optional[list[Path]] = None
-    analyze_results: Optional[bool] = True
 
     def __post_init__(self):
         self.output_dir.mkdir(exist_ok=True, parents=True)
