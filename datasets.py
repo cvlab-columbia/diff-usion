@@ -11,7 +11,6 @@ import pandas as pd
 from typing import Optional, Union, List, Tuple
 from utils.templates import INSTRUCT_PREFIX_TEMPLATES, IMAGENET_CLIP_TEMPLATES
 from textual_inversion_config import InstructInversionBPTTConfig, DatasetConfig
-from spawrious import SpawriousBenchmark
 
 
 class Birds(Dataset):
@@ -1580,64 +1579,3 @@ def build_combination(benchmark_type, group, test, filler=None):
             ("corgi",): [test[3], test[3]],
         }
     return combinations
-
-
-class Spawrious(SpawriousBenchmark):
-    ENVIRONMENTS = ["Test", "SC_group_1", "SC_group_2"]
-    input_shape = (3, 224, 224)
-    num_classes = 2
-    class_list = ["bulldog", "corgi", "dachshund", "labrador"]
-    # class_list = ["dachshund", "labrador"]
-    locations_list = ["desert", "jungle", "dirt", "mountain", "snow", "beach"]
-
-    def __init__(
-        self,
-        benchmark,
-        root_dir,
-        train_transforms,
-        test_transforms,
-        augment=True,
-        split=None,
-    ):
-        combinations = _get_combinations(benchmark.lower())
-        self.type1 = benchmark.lower().startswith("o2o")
-        train_datasets, test_datasets = self._prepare_transforms(
-            combinations["train_combinations"],
-            combinations["test_combinations"],
-            root_dir,
-            augment,
-            train_transforms,
-            test_transforms,
-        )
-        if isinstance(split, int):
-            self.datasets = [test_datasets[split], train_datasets[split]]
-        else:
-            self.datasets = [ConcatDataset(test_datasets)] + train_datasets
-
-    def get_train_dataset(self):
-        return torch.utils.data.ConcatDataset(self.datasets[1:])
-
-    def get_test_dataset(self):
-        return self.datasets[0]
-
-    # Prepares the train and test data lists by applying the necessary transformations.
-    def _prepare_transforms(
-        self,
-        train_combinations,
-        test_combinations,
-        root_dir,
-        augment,
-        train_transforms,
-        test_transforms,
-    ):
-        if augment is False:
-            train_transforms = test_transforms
-
-        train_data_list = self._create_data_list(
-            train_combinations, root_dir, train_transforms
-        )
-        test_data_list = self._create_data_list(
-            test_combinations, root_dir, test_transforms
-        )
-
-        return train_data_list, test_data_list

@@ -1,0 +1,25 @@
+dataset:
+  image_dir: /proj/vondrick/datasets/magnification/kermany
+  img_size: 512
+  name: kermany
+  classes:
+  - "DRUSEN"
+  - "NORMAL"
+  num_samples: 90
+
+train_batch_size: 32
+num_train_epochs: 4
+learning_rate: 0.001
+output_dir: 'output/lora/kermany'
+lora_alpha: 8.0
+rank: 4
+max_train_steps: 2000
+
+seed: 0
+
+checkpoints_total_limit: 20
+
+num_gpus: 1
+guidance_scale: 6
+lora_alpha: 8.0
+
