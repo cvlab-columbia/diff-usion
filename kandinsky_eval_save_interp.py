@@ -1,5 +1,6 @@
 import PIL
 import math
+import os
 import torch
 import random
 import pyrallis
@@ -15,7 +16,6 @@ from utils.metrics import ensemble_predict
 from textual_inversion_config import KandinskyEvalConfig
 from datasets import (
     get_cls_dataset_by_name,
-    Spawrious,
     IMAGENET_CLIP_TEMPLATES,
     ImagesBase,
 )
@@ -61,7 +61,7 @@ def main(cfg: KandinskyEvalConfig):
     pipeline.prior.to(device)
 
     try:
-        lora_model = PeftModel.from_pretrained(pipeline.unet, cfg.lora_weights_dir)
+        lora_model = PeftModel.from_pretrained(pipeline.unet, str(cfg.lora_weights_dir) + "/checkpoint-" + str(cfg.ckpt))
         pipeline.unet = lora_model
         print(f"loading lora weights from {cfg.lora_weights_dir}")
     except (OSError, TypeError):
@@ -106,6 +106,9 @@ def main(cfg: KandinskyEvalConfig):
     t_skips = sorted(t_skips, reverse=True)
     manipulation_scales = [-1, 0, 1, 1.5, 2]  # eta in our equations
     modes = [ManipulateMode.cond_avg]
+
+    cfg.output_dir = cfg.output_dir / Path("num_images_" + str(cfg.num_images)) / Path("interp_ckpt_" + str(cfg.ckpt))
+    os.makedirs(cfg.output_dir, exist_ok=True)
 
     for images, label, img_path in tqdm(data_loader):
         images = images.to(device)
@@ -202,7 +205,7 @@ def main(cfg: KandinskyEvalConfig):
             probs = classifiers_preds.probs
 
             # Save or display the image
-            prefix = f"{Path(img_path[0]).name}"
+            prefix = f"{Path(img_path[0]).name}".split(".")[0]
             save_path = (
                 cfg.output_dir
                 / f"{prefix}_gsi{gs_tar}_gs{gs_tar}_gsm{manipulation_scales[0]}_{manipulation_scales[-1]}_tskips{t_skips[0]}_{t_skips[-1]}.png"
@@ -222,29 +225,29 @@ def main(cfg: KandinskyEvalConfig):
             #     padding=0,
             #     pad_value=1.0,
             #     prob_text_prefix="",
+            # # )
+
+            # plot_new_row_with_probs(
+            #     sample=images, probs=None, save_path=cfg.output_dir / f"{prefix}.png"
             # )
 
-            plot_new_row_with_probs(
-                sample=images, probs=None, save_path=cfg.output_dir / f"{prefix}.png"
-            )
+            # # save input image with probs
+            # # plot_grid_with_probs(
+            # #     sample=images,
+            # #     probs=probs[0].unsqueeze(0),
+            # #     save_path=cfg.output_dir / f"{prefix}_probs.png",
+            # #     probs_only=True,
+            # #     nrow=1,
+            # #     padding=0,
+            # #     pad_value=1.0,
+            # #     prob_text_prefix="",
+            # # )
 
-            # save input image with probs
-            # plot_grid_with_probs(
+            # plot_new_row_with_probs(
             #     sample=images,
             #     probs=probs[0].unsqueeze(0),
             #     save_path=cfg.output_dir / f"{prefix}_probs.png",
-            #     probs_only=True,
-            #     nrow=1,
-            #     padding=0,
-            #     pad_value=1.0,
-            #     prob_text_prefix="",
             # )
-
-            plot_new_row_with_probs(
-                sample=images,
-                probs=probs[0].unsqueeze(0),
-                save_path=cfg.output_dir / f"{prefix}_probs.png",
-            )
 
             # save interp
             # plot_grid_with_probs(
@@ -257,12 +260,12 @@ def main(cfg: KandinskyEvalConfig):
             #     pad_value=1.0,
             #     prob_text_prefix="",
             # )
-            plot_new_row_with_probs(
-                sample=concat_samples[0:],
-                probs=None,
-                save_path=save_path,
-                ncols=len(manipulation_scales)+1,
-            )
+            # plot_new_row_with_probs(
+            #     sample=concat_samples[0:],
+            #     probs=None,
+            #     save_path=save_path,
+            #     ncols=len(manipulation_scales)+1,
+            # )
 
             # save interp with probs
             # plot_grid_with_probs(
@@ -276,8 +279,8 @@ def main(cfg: KandinskyEvalConfig):
             #     prob_text_prefix="",
             # )
             plot_new_row_with_probs(
-                sample=concat_samples[0:],
-                probs=probs[0:],
+                sample=concat_samples,
+                probs=probs,
                 save_path=save_path_probs,
                 ncols=len(manipulation_scales)+1,
             )

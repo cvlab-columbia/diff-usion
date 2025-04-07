@@ -5,6 +5,9 @@ file_lists/
 launch.json
 clf_ckpts/
 prob_figures/
+gifs/
+wandb/
+output/
 *.ttf
 
 # Byte-compiled / optimized / DLL files

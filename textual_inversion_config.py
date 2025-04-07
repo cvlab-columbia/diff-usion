@@ -167,33 +167,7 @@ class ZeroInversionBPTTConfig:
     def __post_init__(self):
         self.log_dir.mkdir(exist_ok=True, parents=True)
 
-# @dataclass
-# class KandinskyEvalConfig:
-#     batch_size: int    
-#     dataset: DatasetConfig
-#     output_dir: Path
-#     batch_size: int
-#     skip: float
-#     guidance: int
-#     alpha: float
-#     embed_filenames: Optional[list[str]] = None
-#     device: Optional[int] = 0
-#     num_inference_steps: Optional[int] = 100
-#     guidance_scale: Optional[float] = 7.5
-#     clf_weights: Optional[Path] = None
-#     num_validation_images: Optional[int] = None
-#     eval_clf_weights: Optional[Path] = None
-#     clip_image_embeds_dir: Optional[Path] = None
-#     debug: Optional[bool] = False
-#     manipulation_mode: Optional[str] = None
-#     manipulation_scale: Optional[float] = None
-#     target: Optional[int] = None
-#     lora_weights_dir: Optional[Path] = None
-#     is_lora: Optional[bool] = False
 
-    
-#     def __post_init__(self):
-#         self.output_dir.mkdir(exist_ok=True, parents=True)
 
 
 @dataclass
@@ -204,6 +178,8 @@ class KandinskyEvalConfig:
     device: Optional[int] = 0
     num_inference_steps: Optional[int] = 100
     num_validation_images: Optional[int] = 8
+    num_images: Optional[int] = 10000
+    ckpt: Optional[int] = 0
     guidance_scale: Optional[float] = 7.5
     clf_weights: Optional[Path] = None
     clip_image_embeds_dir: Optional[Path] = None
