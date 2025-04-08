@@ -41,6 +41,12 @@ To save CLIP features for YOUR own dataset, run:
 $ python scripts/save_embeds.py
 ```
 
+## Locate ensemble classifiers (or train your own)
+To train our set of ensemble classifiers, run:
+```bash
+$ python scripts/ensemble_train.py --config_path configs/ensemble/retina.yaml
+```
+
 ### Modify config file
 The image editing config file is in `configs/edit` folder, and we have provided an example one for the retina dataset.
 
