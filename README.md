@@ -36,14 +36,15 @@ $ python gradio_diff-usion_demo.py
 
 ## Reproducing our results 
 
-First, download the datasets, fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/drive/folders/1-_0000000000000000000000000000000000000000).
+First, download the datasets, fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/drive/folders/1-_0000000000000000000000000000000000000000). Place the 'results' folder in the root directory. 
 
 Then, run the following commands to reproduce our results:
 ```bash
 $ python kandinsky_eval.py --config_path configs/edit/retina.yaml
 $ python make_gif.py --config_path configs/edit/retina.yaml
-
 ```
+
+You can also reproduce our results on our datasets without downloading anything by reproducing the clip embeddings, ensemble classifiers, and lora weights yourself via the instructions in the next section.
 
 ## Usage on your own dataset 
 ### Dataset format
