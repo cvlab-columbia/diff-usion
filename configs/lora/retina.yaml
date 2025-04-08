@@ -7,6 +7,12 @@ dataset:
   - "NORMAL"
   num_samples: 90
 
+
+file_list_paths: 
+  - /proj/vondrick2/mia/magnificationold/file_list_short/file_list_kermany_target0.txt
+  - /proj/vondrick2/mia/magnificationold/file_list_short/file_list_kermany_target1.txt
+
+
 train_batch_size: 32
 num_train_epochs: 4
 learning_rate: 0.001

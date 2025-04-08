@@ -15,7 +15,7 @@ from datasets import get_cls_dataset_by_name
 from utils.metrics import compute_lpips_similarity
 from utils.metrics import ensemble_predict
 from utils.viz import plot_grid_with_probs
-from utils.analyze_sweeps import analyze_results_like_baseline
+from utils.analyze_sweeps import analyze_results_like_baseline, analyze_results_from_best
 import torch.nn.functional as F
 from torchvision.transforms.functional import to_pil_image
 import numpy as np
@@ -68,6 +68,12 @@ def get_direction_sign(idx: int):
     else:
         raise ValueError("Currently two direction are supported in this script")
     return sign
+
+
+# Add this function to check if a prediction has flipped
+def has_prediction_flipped(orig_preds, new_preds):
+    """Check if any prediction has flipped from one class to another."""
+    return ((orig_preds.preds > 0.5) != (new_preds.preds > 0.5)).any().item()
 
 
 @pyrallis.wrap()
@@ -134,12 +140,12 @@ def main(cfg: KandinskyEvalConfig):
 
     gs_inversion = 2
     gs_targets = [4]
-    t_skips = list(np.linspace(0.0, 0.9, 10))
+    t_skips = list(np.linspace(0.9, 0.0, 10))
     manipulation_scales = [2]
     modes = [ManipulateMode.cond_avg]
 
     if cfg.lora_weights_dir is not None:
-        ckpts = [200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000]
+        ckpts = cfg.ckpt
     else:
         ckpts = [0]
 
@@ -209,6 +215,8 @@ def main(cfg: KandinskyEvalConfig):
                     image_embeds = pipeline.image_encoder(**inputs).image_embeds
                     orig_image_embeds = image_embeds.clone()
 
+                    # Get original predictions
+                    orig_preds = ensemble_predict(classifiers, images)
 
                     norm_image_embeds = orig_image_embeds / orig_image_embeds.norm(
                         dim=-1, keepdim=True
@@ -224,14 +232,29 @@ def main(cfg: KandinskyEvalConfig):
                     )
                     torch.cuda.empty_cache()
 
+                    # Flag to track if we found a flip for this batch
+                    found_flip = False
+                    best_t_skip = None
+                    best_samples = None
+                    best_preds = None
+
                     for mode in modes:
+                        if found_flip:
+                            break
+                            
                         for gs_tar in gs_targets:
+                            if found_flip:
+                                break
+                                
                             for m_scale in manipulation_scales:
+                                if found_flip:
+                                    break
+                                    
                                 for t_skip in t_skips:
                                     t_skip = round(t_skip, 3)
+                                    print(f"Trying t_skip: {t_skip}")
 
                                     if mode == ManipulateMode.cond_avg:
-
                                         image_embeds = (
                                             norm_image_embeds
                                             + direction_sign
@@ -265,8 +288,11 @@ def main(cfg: KandinskyEvalConfig):
                                         manipulation_scale=m_scale,
                                     ).images
 
+                                    # Check if predictions have flipped
+                                    new_preds = ensemble_predict(classifiers, samples)
+                                    flipped = has_prediction_flipped(orig_preds, new_preds)
+                                    
                                     # for report
-                                    classifiers_preds = ensemble_predict(classifiers, samples)
                                     lpips = compute_lpips_similarity(
                                         images, samples, reduction=None
                                     )
@@ -277,12 +303,13 @@ def main(cfg: KandinskyEvalConfig):
                                         cls_prefix=orig_classes[i],
                                         experiment=experiment,
                                         lpips=lpips,
-                                        preds=classifiers_preds.preds,
-                                        avg_probs=classifiers_preds.probs,
+                                        preds=new_preds.preds,
+                                        avg_probs=new_preds.probs,
                                         targets=targets,
                                     )
                                     rows_all += experiment_rows
 
+                                    # Save the samples
                                     for img_path, sample in zip(img_paths, samples):
                                         image = to_pil_image(sample)
                                         save_path = (
@@ -290,16 +317,57 @@ def main(cfg: KandinskyEvalConfig):
                                             / f"{Path(img_path).name}_{experiment}.png"
                                         )
                                         image.save(save_path)
+                                    
+                                    # If we found a flip, save the best parameters and break
+                                    if flipped:
+                                        print(f"Found flip at t_skip: {t_skip}")
+                                        found_flip = True
+                                        best_t_skip = t_skip
+                                        best_samples = samples
+                                        best_preds = new_preds
+                                        break
+                    
+                    # If we found a flip, add a special entry to indicate the best parameters
+                    if found_flip:
+                        best_experiment = f"BEST_skip_{best_t_skip}_manip_{m_scale}_cfgtar_{gs_tar}_mode_{mode}"
+                        best_lpips = compute_lpips_similarity(
+                            images, best_samples, reduction=None
+                        )
+                        
+                        best_rows = get_rows_for_report(
+                            img_paths=img_paths,
+                            cls_prefix=f"BEST_{orig_classes[i]}",
+                            experiment=best_experiment,
+                            lpips=best_lpips,
+                            preds=best_preds.preds,
+                            avg_probs=best_preds.probs,
+                            targets=targets,
+                        )
+                        rows_all += best_rows
+                        
+                        # Save the best samples with a special prefix
+                        for img_path, sample in zip(img_paths, best_samples):
+                            image = to_pil_image(sample)
+                            save_path = (
+                                samples_save_dir
+                                / f"BEST_{Path(img_path).name}_{best_experiment}.png"
+                            )
+                            image.save(save_path)
+
         df = pd.DataFrame(rows_all)
         os.makedirs(cfg.output_dir / f"num_images_{num_images}", exist_ok=True)
         report_path = cfg.output_dir / f"num_images_{num_images}" / f"report_ckpt_{ckpt}.csv"
         print(f"report save in {str(report_path)}")
+        #load the dataframe from report_path
+        #df = pd.read_csv(report_path)
         df.to_csv(report_path)
 
         if cfg.analyze_results:
-            #os.makedirs(report_path.parent)
             log_path = report_path.parent / f"log_ckpt_{ckpt}.txt"
-            results_dfs, flip_rates = analyze_results_like_baseline(df, log_path)
+            samples_dir = cfg.output_dir / f"num_images_{num_images}" / f"samples_ckpt_{ckpt}"
+            
+            # Use the new function that analyzes based on BEST_ files
+            results_dfs, flip_rates = analyze_results_from_best(df, samples_dir, log_path)
             
             # Save each manipulation's results to a separate CSV
             for manip_val, results_df in results_dfs.items():

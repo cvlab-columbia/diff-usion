@@ -179,7 +179,7 @@ class KandinskyEvalConfig:
     num_inference_steps: Optional[int] = 100
     num_validation_images: Optional[int] = 8
     num_images: Optional[int] = 10000
-    ckpt: Optional[int] = 0
+    ckpt: Optional[list[int]] = [0]
     guidance_scale: Optional[float] = 7.5
     clf_weights: Optional[Path] = None
     clip_image_embeds_dir: Optional[Path] = None

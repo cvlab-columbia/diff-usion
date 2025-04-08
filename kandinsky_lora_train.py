@@ -647,50 +647,50 @@ def main(cfg: KandinskyLoRAConfig):
             if global_step >= cfg.max_train_steps:
                 break
 
-        if epoch % cfg.validation_epochs == 0:
-            if accelerator.is_main_process:
-                logger.info(f"Running validation... for {cfg.num_validation_images} images")
+        # if epoch % cfg.validation_epochs == 0:
+        #     if accelerator.is_main_process:
+        #         logger.info(f"Running validation... for {cfg.num_validation_images} images")
                 
-                # run inference
-                generator = torch.Generator(device=accelerator.device)
-                if cfg.seed is not None:
-                    generator = generator.manual_seed(cfg.seed)
+        #         # run inference
+        #         generator = torch.Generator(device=accelerator.device)
+        #         if cfg.seed is not None:
+        #             generator = generator.manual_seed(cfg.seed)
 
-                samples, images = [], []
-                for i, batch in enumerate(val_dataloader):
+        #         samples, images = [], []
+        #         for i, batch in enumerate(val_dataloader):
 
-                    if i >= cfg.num_validation_images:
-                        break
+        #             if i >= cfg.num_validation_images:
+        #                 break
 
-                    batch_images, clip_images = batch
-                    clip_images.to(weight_dtype)
-                    image_embeds = image_encoder(clip_images).image_embeds
+        #             batch_images, clip_images = batch
+        #             clip_images.to(weight_dtype)
+        #             image_embeds = image_encoder(clip_images).image_embeds
 
-                    bsz = batch_images.shape[0]
-                    negative_image_embeds = prior.get_zero_embed(batch_size=bsz)
+        #             bsz = batch_images.shape[0]
+        #             negative_image_embeds = prior.get_zero_embed(batch_size=bsz)
 
-                    samples.append(
-                        val_pipeline(
-                            image_embeds=image_embeds,
-                            negative_image_embeds=negative_image_embeds,
-                            generator=generator,
-                        ).images[0]
-                    )
-                    images.append(batch_images)
+        #             samples.append(
+        #                 val_pipeline(
+        #                     image_embeds=image_embeds,
+        #                     negative_image_embeds=negative_image_embeds,
+        #                     generator=generator,
+        #                 ).images[0]
+        #             )
+        #             images.append(batch_images)
 
-                images = torch.cat(images)
-                images_pil = [to_pil_image(image) for image in images]
-                concat_samples = images_pil + samples
+        #         images = torch.cat(images)
+        #         images_pil = [to_pil_image(image) for image in images]
+        #         concat_samples = images_pil + samples
 
-                # Save or display the image
-                grid = create_image_pil_grid(concat_samples, cols=cfg.num_validation_images)
+        #         # Save or display the image
+        #         grid = create_image_pil_grid(concat_samples, cols=cfg.num_validation_images)
 
-                for tracker in accelerator.trackers:
-                    if tracker.name == "wandb":
-                        tracker.log({"validation": [wandb.Image(grid)]})
+        #         for tracker in accelerator.trackers:
+        #             if tracker.name == "wandb":
+        #                 tracker.log({"validation": [wandb.Image(grid)]})
 
-                #del val_pipeline
-                torch.cuda.empty_cache()
+        #         #del val_pipeline
+        #         torch.cuda.empty_cache()
 
     # Save the lora layers
     accelerator.wait_for_everyone()

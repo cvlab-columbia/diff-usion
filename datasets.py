@@ -676,16 +676,6 @@ def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
             file_list_path=cfg.file_list_path,
         )
 
-    elif cfg.name == "spawrious":
-        dataset = SpawriousSimple(
-            cfg.image_dir, transform=train_transform, split="train", classes=cfg.classes, num_samples=cfg.num_samples
-        )
-        # eval_dataset = SpawriousSimple(
-        #     cfg.image_dir, transform=val_transform, split="test", classes=cfg.classes, file_list_path=cfg.file_list_path
-        # )
-        eval_dataset = SpawriousSimple(
-            cfg.image_dir, transform=val_transform, split="val", classes=cfg.classes, file_list_path=cfg.file_list_path
-        )
 
     elif cfg.name == "inaturalist":
         
@@ -775,20 +765,7 @@ def get_cls_dataset_by_name(cfg: DatasetConfig, dataset_transforms: list):
             synset_ids=cfg.synset_ids,
         )
 
-    elif cfg.name == "yearbook":
-        dataset = Yearbook(
-            root_dir=cfg.image_dir,
-            transform=train_transform,
-            classes=cfg.classes,
-            file_list_path=cfg.file_list_path,
-            split="train",
-        )
-        eval_dataset = Yearbook(
-            root_dir=cfg.image_dir,
-            transform=val_transform,
-            classes=cfg.classes,
-            split="val",
-        )
+  
 
     elif cfg.name == "celeba":
         dataset = CelebA(
@@ -1158,7 +1135,7 @@ class ImagesBase(Dataset):
         self.transform = transform
         image_files = []
         for ext in ("*.jpg", "*.png", "*.jpeg"):
-            image_files.extend(self.root_dir.rglob(ext))
+                image_files.extend(self.root_dir.rglob(ext))
         self.image_list = image_files
 
     def __len__(self):

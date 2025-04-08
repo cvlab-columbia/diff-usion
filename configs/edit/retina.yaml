@@ -14,9 +14,9 @@ num_images: 10000
 device: 3 
 output_dir: ./results/eval/kandinsky_sweeps/reports/kermany_ckpt_num_images
 
-eval_clf_weights: /proj/vondrick2/mia/magnificationold/results/ensemble/kermany
+eval_clf_weights: /proj/vondrick2/mia/diff-usion/results/ensemble/kermany
 
-clip_image_embeds_dir: /proj/vondrick2/mia/magnificationold/results/clip_image_embeds/kermany
+clip_image_embeds_dir: /proj/vondrick2/mia/diff-usion/results/clip_image_embeds/kermany
 embed_filenames: ["0_val", "1_val"]
 ckpt: 2000
 lora_weights_dir: /proj/vondrick2/mia/diff-usion/output/lora/kermany/balmy-snowball-84

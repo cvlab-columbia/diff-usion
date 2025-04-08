@@ -264,36 +264,20 @@ def format_manip(value):
     # Otherwise keep the decimal representation
     return str(float(value))
 
-def create_gifs(df, dataset_name, target_class, output_dir, use_predictions=True, ckpt=1000, manip_scale=0.0):
-    """Create GIFs from original and generated images.
-    
-    Args:
-        df: DataFrame containing image information
-        dataset_name: Name of the dataset
-        target_class: Target class (0 or 1)
-        output_dir: Output directory for GIFs
-        use_predictions: Whether to use classifier predictions (True) or real labels (False)
-        ckpt: Checkpoint number
-        manip_scale: Manipulation scale
-    """
+def create_gifs(df, dataset_name, target_class, output_dir, ckpt=2000, manip_scale=2.0, use_predictions=True):
+    """Create GIFs from original and best generated images"""
     
     # Load classifiers if using predictions
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     classifiers = []
     if use_predictions:
-        eval_clf_dir = Path("/proj/vondrick2/mia/magnificationold/results/ensemble") / Path(str(dataset_name))
+        eval_clf_dir = Path("/proj/vondrick2/mia/diff-usion/results/ensemble") / Path(str(dataset_name))
         classifiers = [
             torch.load(model_path, map_location=device)
             for model_path in eval_clf_dir.glob("*.pth")
         ]
         for clf in classifiers:
             clf.eval()
-
-        # Set up transform for classifier
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize((512, 512)),
-        ])
 
     # Set up paths based on dataset
     if dataset_name == "afhq":
@@ -314,72 +298,80 @@ def create_gifs(df, dataset_name, target_class, output_dir, use_predictions=True
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
+    # Create output directory if it doesn't exist
+    gif_dir = Path(output_dir)
+    gif_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Path to the samples directory
+    samples_dir = Path(f"results/eval/kandinsky_sweeps/reports/{dataset_name}_ckpt_num_images/num_images_10000/samples_ckpt_{ckpt}")
+    
     # Filter dataframe for target class
+    
     df_filtered = df[df['target'] == target_class]
-
+    
+    # Process each row in the filtered dataframe
     for filename, row in df_filtered.iterrows():
-        # Get original filename without the 'generated_classname_' prefix
-        base_filename = filename.replace(f"generated_{classes[target_class]}_", "")
-        
-        # Get original image path
-        if target_class == 0:  # class0 to class1
-            if dataset_name == "inaturalist":
-                orig_path = orig_dir / '06372_Plantae_Tracheophyta_Liliopsida_Poales_Poaceae_Elymus_elymoides' / base_filename
-            else:
-                orig_path = orig_dir / classes[0] / base_filename
-        else:  # class1 to class0
-            if dataset_name == "inaturalist":
-                orig_path = orig_dir / '06375_Plantae_Tracheophyta_Liliopsida_Poales_Poaceae_Elymus_virginicus' / base_filename
-            else:
-                orig_path = orig_dir / classes[1] / base_filename
-
-        # Get generated image path based on method
-        skip = row['tksip']
-        manip = format_manip(manip_scale)
-        cfgtar = int(row['gs_tar'])
-        gen_path = Path(f"results/eval/kandinsky_sweeps/reports/{dataset_name}_ckpt_num_images/num_images_10000/samples_ckpt_2000") / f"{base_filename}_skip_{skip}_manip_{manip}_cfgtar_{cfgtar}_mode_ManipulateMode.cond_avg.png"
-
-        # Create gif if both paths exist
-        if orig_path.exists() and gen_path.exists():
-            # Create output directory if it doesn't exist
-            gif_dir = Path(output_dir)
-            gif_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Load images
-            if orig_path.suffix == '.npy':
-                #orig_img = Image.open(orig_path).convert('RGB')
-                orig_img = np.load(orig_path)
-                orig_img = Image.fromarray(orig_img).convert('RGB')
-            else:
-                orig_img = Image.open(orig_path).convert('RGB')
-            gen_img = Image.open(gen_path).convert('RGB')
-            
-            if use_predictions:
-                # Get classifier predictions
-                orig_img_tensor = transform(orig_img).to(device)[None]
-                orig_pred = ensemble_predict(classifiers, orig_img_tensor).probs.item() #round to 3 decimal places
-                gen_img_tensor = transform(gen_img).to(device)[None]
-                gen_pred = ensemble_predict(classifiers, gen_img_tensor).probs.item()
-            else:
-                # Use real labels
-                orig_pred = target_class
-                gen_pred = 1 - target_class  # opposite class
-            
-            # Add class labels
-            orig_img = add_text_to_image(orig_img.resize((512,512)), f"Prob: {orig_pred:.2f}")
-            gen_img = add_text_to_image(gen_img.resize((512,512)), f"Prob: {gen_pred:.2f}")
-            
-            # Create and save gif
-            gif_path = gif_dir / f"{base_filename.replace('.png', '.gif').replace('.npy', '.gif').replace('.jpg', '.gif').replace('.jpeg', '.gif')}"
+        # Extract the original filename
+        if "generated_" in filename:
             #import pdb; pdb.set_trace()
-            orig_img.save(
-                gif_path,
-                save_all=True,
-                append_images=[gen_img],
-                duration=1000,  # 1 second per frame
-                loop=0
-            )
-            print(f"Created gif: {gif_path}")
+            parts = filename.split("_", 3)
+            if len(parts) >= 3:
+                original_filename = parts[3]
+                
+                # Get original image path
+                if target_class == 0:  # class0 to class1
+                    orig_path = orig_dir / classes[0] / original_filename
+                else:  # class1 to class0
+                    orig_path = orig_dir / classes[1] / original_filename
+                
+                # Find the best image for this file
+                best_file_pattern = f"BEST_*{original_filename}*"
+                best_files = list(samples_dir.glob(best_file_pattern))
+                if best_files and orig_path.exists():
+                    best_path = best_files[0]  # Take the first match if multiple exist
+                    
+                    # Load images
+                    if orig_path.suffix == '.npy':
+                        orig_img = np.load(orig_path)
+                        if len(orig_img.shape) == 2:  # Handle grayscale images
+                            orig_img = np.stack([orig_img] * 3, axis=2)
+                        orig_img = Image.fromarray(orig_img).convert('RGB')
+                    else:
+                        orig_img = Image.open(orig_path).convert('RGB')
+                    
+                    gen_img = Image.open(best_path).convert('RGB')
+                    
+                    if use_predictions:
+                        # Get classifier predictions
+                        transform = transforms.Compose([
+                            transforms.ToTensor(),
+                            transforms.Resize((512, 512)),
+                        ])
+                        
+                        orig_img_tensor = transform(orig_img).to(device)[None]
+                        orig_pred = ensemble_predict(classifiers, orig_img_tensor).probs.item()
+                        gen_img_tensor = transform(gen_img).to(device)[None]
+                        gen_pred = ensemble_predict(classifiers, gen_img_tensor).probs.item()
+                    else:
+                        # Use real labels
+                        orig_pred = target_class
+                        gen_pred = 1 - target_class  # opposite class
+                    
+                    # Add class labels
+                    orig_img = add_text_to_image(orig_img.resize((512,512)), f"Prob: {orig_pred:.2f}")
+                    gen_img = add_text_to_image(gen_img.resize((512,512)), f"Prob: {gen_pred:.2f}")
+                    
+                    # Create and save gif
+                    gif_path = gif_dir / f"{original_filename.replace('.png', '.gif').replace('.npy', '.gif').replace('.jpg', '.gif').replace('.jpeg', '.gif')}"
+                    
+                    orig_img.save(
+                        gif_path,
+                        save_all=True,
+                        append_images=[gen_img],
+                        duration=1000,  # 1 second per frame
+                        loop=0
+                    )
+                    print(f"Created gif: {gif_path}")
 
 def create_class_transition_gifs(df, dataset_name, output_dir, use_predictions=True, ckpt=1000, manip_scale=0.0):
     """Create gifs transitioning between class 0 and class 1 inputs from training set"""
@@ -530,10 +522,10 @@ def compress_gifs_folder(folder_path):
 
 
 if __name__ == "__main__":
-    dataset_name = "kermany"
+    dataset_name = "butterfly"
     manip_scale = 2.0
     num_images = 10000
-    ckpt = 2000
+    ckpt = 1900
     os.makedirs("gifs", exist_ok=True)
 
     df = pd.read_csv(f"results/eval/kandinsky_sweeps/reports/{dataset_name}_ckpt_num_images/num_images_{num_images}/analyzed-manip{manip_scale}-report_ckpt_{ckpt}.csv", index_col=0)

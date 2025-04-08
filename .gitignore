@@ -8,6 +8,8 @@ prob_figures/
 gifs/
 wandb/
 output/
+lora_output/
+.gitignore
 *.ttf
 
 # Byte-compiled / optimized / DLL files

@@ -1,0 +1,17 @@
+dataset:
+  image_dir: /proj/vondrick/datasets/magnification/kermany
+  img_size: 512
+  name: kermany
+  classes:
+  - "DRUSEN"
+  - "NORMAL"
+file_list_paths: 
+  - file_lists/file_list_kermany_target0.txt
+  - file_lists/file_list_kermany_target1.txt
+batch_size: 32
+lr: 1e-3
+epochs: 10
+patience: 5
+device: 7
+log_dir: /proj/vondrick2/mia/diff-usion/results/ensemble/kermany
+clf_weights: None
