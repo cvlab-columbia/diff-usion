@@ -12,6 +12,16 @@ and less of a prominent photon ring (${\color{blue}\text{blue}}$) as compared to
 than known a priori. In the Retina dataset, normal retinas lack the horizontal line bumps (${\color{yellow}\text{yellow}}$) present in retinas with drusen.
 
 
+## Gradio demo 
+
+We've made a gradio demo that automatically runs our method end-to-end given just your dataset (extracts embeds, trains classifiers, finetune's the diffusion model, and runs our arithmetic edit!). To run it in reasonable time, it requires GPUs, so we've provided the gradio demo code for you to run on your own machine.
+
+To run the gradio demo, run:
+```bash
+$ python gradio_diff-usion_demo.py
+```
+
+
 ## Setup
 Create conda environment:
 ```bash
@@ -41,7 +51,7 @@ To save CLIP features for YOUR own dataset, run:
 $ python scripts/save_embeds.py
 ```
 
-## Locate ensemble classifiers (or train your own)
+### Locate ensemble classifiers (or train your own)
 To train our set of ensemble classifiers, run:
 ```bash
 $ python scripts/ensemble_train.py --config_path configs/ensemble/retina.yaml
