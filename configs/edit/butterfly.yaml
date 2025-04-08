@@ -12,12 +12,12 @@ batch_size: 1
 num_inference_steps: 100
 num_images: 10000
 device: 1 
-output_dir: ./results/eval/kandinsky_sweeps/reports/butterfly_ckpt_num_images_dandyplant126
+output_dir: ./results/eval/kandinsky_sweeps/reports/butterfly_ckpt_num_images
 
 eval_clf_weights: /proj/vondrick2/mia/diff-usion/results/ensemble/butterfly
 
 clip_image_embeds_dir: output/embeddings
 embed_filenames: ["class0_embeds", "class1_embeds"]
-ckpt: [1800,1900,2000]
+ckpt: [1800,1900]
 lora_weights_dir: /proj/vondrick2/mia/diff-usion/output/lora/butterfly/dandy-plant-126
 

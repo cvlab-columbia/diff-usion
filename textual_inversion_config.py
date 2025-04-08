@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Union, List
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -179,7 +179,7 @@ class KandinskyEvalConfig:
     num_inference_steps: Optional[int] = 100
     num_validation_images: Optional[int] = 8
     num_images: Optional[int] = 10000
-    ckpt: Optional[list[int]] = [0]
+    ckpt: List[int] = field(default_factory=lambda: [0])
     guidance_scale: Optional[float] = 7.5
     clf_weights: Optional[Path] = None
     clip_image_embeds_dir: Optional[Path] = None
@@ -188,6 +188,8 @@ class KandinskyEvalConfig:
     eval_clf_weights: Optional[Path] = None
     file_list_paths: Optional[list[Path]] = None
     analyze_results: Optional[bool] = True
+    create_transitions: bool = False
+    compress_output: bool = False
 
     def __post_init__(self):
         self.output_dir.mkdir(exist_ok=True, parents=True)

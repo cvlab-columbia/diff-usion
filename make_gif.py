@@ -9,10 +9,12 @@ from torchvision import transforms
 import pdb
 import shutil
 from datasets import get_cls_dataset_by_name
-from textual_inversion_config import DatasetConfig
+from textual_inversion_config import DatasetConfig, KandinskyEvalConfig
 import torchvision.transforms.v2 as transforms_v2
 import random
 from utils.metrics import ensemble_predict
+import pyrallis
+import yaml
 
 
 def create_comparison_grid(df, df_sd, df_sd_ti, df_sliders,dataset_name, target_class, output_path, images_per_row=10, ckpt=1000, manip_scale=0.0):
@@ -264,7 +266,7 @@ def format_manip(value):
     # Otherwise keep the decimal representation
     return str(float(value))
 
-def create_gifs(df, dataset_name, target_class, output_dir, ckpt=2000, manip_scale=2.0, use_predictions=True):
+def create_gifs(df, dataset_name, target_class, output_dir, ckpt, samples_dir, use_predictions=True):
     """Create GIFs from original and best generated images"""
     
     # Load classifiers if using predictions
@@ -302,18 +304,16 @@ def create_gifs(df, dataset_name, target_class, output_dir, ckpt=2000, manip_sca
     gif_dir = Path(output_dir)
     gif_dir.mkdir(parents=True, exist_ok=True)
     
-    # Path to the samples directory
-    samples_dir = Path(f"results/eval/kandinsky_sweeps/reports/{dataset_name}_ckpt_num_images/num_images_10000/samples_ckpt_{ckpt}")
-    
     # Filter dataframe for target class
-    
     df_filtered = df[df['target'] == target_class]
+    #filter only with filename that have 'BEST' in it
+    df_filtered = df_filtered[df_filtered['filename'].str.contains('BEST')]
     
     # Process each row in the filtered dataframe
-    for filename, row in df_filtered.iterrows():
+    for index, row in df_filtered.iterrows():
+        filename = row['filename']
         # Extract the original filename
         if "generated_" in filename:
-            #import pdb; pdb.set_trace()
             parts = filename.split("_", 3)
             if len(parts) >= 3:
                 original_filename = parts[3]
@@ -373,12 +373,11 @@ def create_gifs(df, dataset_name, target_class, output_dir, ckpt=2000, manip_sca
                     )
                     print(f"Created gif: {gif_path}")
 
-def create_class_transition_gifs(df, dataset_name, output_dir, use_predictions=True, ckpt=1000, manip_scale=0.0):
+def create_class_transition_gifs(dataset_name, output_dir, use_predictions=True):
     """Create gifs transitioning between class 0 and class 1 inputs from training set"""
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-
     if dataset_name == "afhq":
         cfg = DatasetConfig(name=dataset_name, image_dir=Path("/proj/vondrick4/datasets/data/afhq"), classes=['dog', 'cat'])
     elif dataset_name == "kikibouba":
@@ -393,6 +392,7 @@ def create_class_transition_gifs(df, dataset_name, output_dir, use_predictions=T
     elif dataset_name == "inaturalist":
         cfg = DatasetConfig(name="inaturalist", image_dir=Path("/proj/vondrick2/utkarsh/datasets/iNat2021"), classes=["6372", "6375"])
         cfg.classes = [6372, 6375]
+    
     # Create transform
     transform = transforms_v2.Compose([
         transforms_v2.ToImage(),
@@ -420,36 +420,31 @@ def create_class_transition_gifs(df, dataset_name, output_dir, use_predictions=T
     print(f"Collected {len(class0_images)} images for class 0")
     print(f"Collected {len(class1_images)} images for class 1")
 
-    eval_clf_dir = Path("/proj/vondrick2/mia/magnificationold/results/ensemble") / Path(str(dataset_name))
+    eval_clf_dir = Path("/proj/vondrick2/mia/diff-usion/results/ensemble") / Path(str(dataset_name))
 
     classifiers = [
         torch.load(model_path, map_location=device)
         for model_path in eval_clf_dir.glob("*.pth")
     ]
-
-    # Create gifs for the first 50 pairs
-    for idx in range(50):
-        img0, path0 = class0_images[idx]
-        img1, path1 = class1_images[idx]
-
-        img0_tensor = img0[None].to(device)
-        img1_tensor = img1[None].to(device)
-
-      
+    for clf in classifiers:
+        clf.eval()
+    
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create GIFs for each pair of images (one from each class)
+    for idx in range(min(25, len(class0_images), len(class1_images))):
+        img0, _ = class0_images[idx]
+        img1, _ = class1_images[idx]
+        
         # Get classifier predictions
-        if use_predictions:
-            img0_pred = ensemble_predict(classifiers, img0_tensor).preds.item()
-            img1_pred = ensemble_predict(classifiers, img1_tensor).preds.item()
-        else:
-            img0_pred = 0
-            img1_pred = 1
-
+        img0_pred = ensemble_predict(classifiers, img0.unsqueeze(0)).probs.item()
+        img1_pred = ensemble_predict(classifiers, img1.unsqueeze(0)).probs.item()
         
         # Convert tensor to PIL Image
         img0_pil = transforms_v2.ToPILImage()(img0)
         img1_pil = transforms_v2.ToPILImage()(img1)
-
-
         
         # Add class labels
         img0_with_text = add_text_to_image(img0_pil, f"Class {img0_pred}")
@@ -521,15 +516,47 @@ def compress_gifs_folder(folder_path):
     print(f"Compression complete. Zip file saved at: {zip_path}")
 
 
-if __name__ == "__main__":
-    dataset_name = "butterfly"
-    manip_scale = 2.0
-    num_images = 10000
-    ckpt = 1900
+@pyrallis.wrap()
+def main(cfg: KandinskyEvalConfig):
+    """Main function that reads parameters from the config file"""
+    dataset_name = cfg.dataset.name
+    num_images = cfg.num_images
     os.makedirs("gifs", exist_ok=True)
+    
+    # Process each checkpoint
+    for ckpt in cfg.ckpt:
+        print(f"Processing checkpoint {ckpt}")
+        
+        # Path to the samples directory
+        samples_dir = Path(f"{cfg.output_dir}/num_images_{num_images}/samples_ckpt_{ckpt}")
+        
+        # Path to the report CSV
+        report_path = Path(f"{cfg.output_dir}/num_images_{num_images}/report_ckpt_{ckpt}.csv")
+        
+        # Check if report exists
+        if not report_path.exists():
+            print(f"Report file not found: {report_path}")
+            continue
+            
+        # Load the report
+        df = pd.read_csv(report_path)
+        
+        # Create output directory for this checkpoint
+        output_base_dir = Path(f"gifs/{dataset_name}_ckpt_{ckpt}")
+        
+        # Process each target class
+        for target in [0, 1]:
+            output_dir = output_base_dir / f"target_{target}"
+            create_gifs(
+                df=df, 
+                dataset_name=dataset_name, 
+                target_class=target, 
+                output_dir=output_dir,
+                ckpt=ckpt,
+                samples_dir=samples_dir,
+                use_predictions=True
+            )
+        
 
-    df = pd.read_csv(f"results/eval/kandinsky_sweeps/reports/{dataset_name}_ckpt_num_images/num_images_{num_images}/analyzed-manip{manip_scale}-report_ckpt_{ckpt}.csv", index_col=0)
-
-    for target in [0, 1]:
-        output_dir = Path(f"gifs/{dataset_name}_manip_{manip_scale}_ckpt_{ckpt}/target_{target}")
-        create_gifs(df, dataset_name, target, output_dir,ckpt=ckpt, manip_scale=manip_scale, use_predictions=True)
+if __name__ == "__main__":
+    main()

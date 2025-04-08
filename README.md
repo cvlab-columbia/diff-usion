@@ -64,5 +64,10 @@ The image editing config file is in `configs/edit` folder, and we have provided 
 $ python kandinsky_eval.py --config_path configs/edit/retina.yaml
 ```
 
+### Crate GIFs
+```bash
+$ python make_gif.py --config_path configs/edit/retina.yaml
+```
+
 ## Citation
 
