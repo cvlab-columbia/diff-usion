@@ -34,9 +34,20 @@ To run the gradio demo, run:
 $ python gradio_diff-usion_demo.py
 ```
 
-## Usage
+## Reproducing our results 
+
+First, download the datasets, fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/drive/folders/1-_0000000000000000000000000000000000000000).
+
+Then, run the following commands to reproduce our results:
+```bash
+$ python kandinsky_eval.py --config_path configs/edit/retina.yaml
+$ python make_gif.py --config_path configs/edit/retina.yaml
+
+```
+
+## Usage on your own dataset 
 ### Dataset format
-To use your own dataset, add a dataset class to the `datasets.py` file. This dataset should return a tuple of (image, label, filename). There should only be two classes, and the labels should be 0 or 1. You will also need to modify the `get_cls_dataset_by_name` function to return your dataset, and create a config file for each folder in the `configs` folder: one for fine-tuning lora (optional) the diffusion model (`lora`), one for training the ensemble classifiers (`ensemble`), and one for editing (`edit`). 
+To use your own dataset, add a dataset class to the `datasets.py` file. This dataset should return a tuple of (image, label, filename). There should only be two classes, and the labels should be 0 or 1. You will also need to modify the `get_cls_dataset_by_name` function to return your dataset, and create a config file for each folder in the `configs` folder: one for fine-tuning lora (optional) the diffusion model (`lora`), one for training the ensemble classifiers (`ensemble`), and one for editing (`edit`). You can copy the structure from the existing configs for the Retina dataset. 
 
 ### (Optional) Domain Tuning on YOUR dataset
 To finetune our diffusion decoder on a new dataset, modify the example config file according to your dataset location and run:
