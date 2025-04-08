@@ -36,7 +36,7 @@ $ python gradio_diff-usion_demo.py
 
 ## Usage
 ### Dataset format
-TODO: explain dataset tree and class formats
+To use your own dataset, add a dataset class to the `datasets.py` file. This dataset should return a tuple of (image, label, filename). There should only be two classes, and the labels should be 0 or 1. You will also need to modify the `get_cls_dataset_by_name` function to return your dataset, and create a config file for each folder in the `configs` folder: one for fine-tuning lora (optional) the diffusion model (`lora`), one for training the ensemble classifiers (`ensemble`), and one for editing (`edit`). 
 
 ### (Optional) Domain Tuning on YOUR dataset
 To finetune our diffusion decoder on a new dataset, modify the example config file according to your dataset location and run:
