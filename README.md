@@ -70,6 +70,8 @@ To train our set of ensemble classifiers, run:
 $ python scripts/ensemble_train.py --config_path configs/ensemble/retina.yaml
 ```
 
+Note that classifiers are not strictly necessary to generate fine-grained edits. The classifier is used to determine the highest tskip while also still flipping the prediction from the classifiers, but you could also simply pick the tskip that you prefer.
+
 ### Modify config file
 The image editing config file is in `configs/edit` folder, and we have provided an example one for the retina dataset.
 
@@ -78,7 +80,7 @@ The image editing config file is in `configs/edit` folder, and we have provided 
 $ python eval.py --config_path configs/edit/retina.yaml
 ```
 
-### Crate GIFs
+### Create GIFs from results
 ```bash
 $ python make_gif.py --config_path configs/edit/retina.yaml
 ```
