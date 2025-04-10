@@ -1,5 +1,6 @@
 # User
 *wandb*
+compressed_datasets/
 results/
 file_lists/
 launch.json
@@ -18,6 +19,7 @@ butterfly/
 temp_lora_uploads/
 temp_uploads/
 results.tar.gz
+c
 fonts/
 eval/
 *.ttf
