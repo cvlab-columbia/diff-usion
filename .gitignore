@@ -10,6 +10,16 @@ wandb/
 output/
 lora_output/
 .gitignore
+lora_output/
+lora_output_lamps/
+lora_output_lampsfar/
+kermany/
+butterfly/
+temp_lora_uploads/
+temp_uploads/
+results.tar.gz
+fonts/
+eval/
 *.ttf
 
 # Byte-compiled / optimized / DLL files

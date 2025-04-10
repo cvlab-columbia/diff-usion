@@ -1,0 +1,9 @@
+file_list.txt
+generated_flickr_dog_000060.jpg
+generated_flickr_dog_000198.jpg
+generated_flickr_dog_000298.jpg
+generated_flickr_dog_000380.jpg
+generated_flickr_dog_000565.jpg
+generated_flickr_dog_000580.jpg
+generated_flickr_dog_000675.jpg
+generated_flickr_dog_000835.jpg

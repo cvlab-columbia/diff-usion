@@ -1,0 +1,9 @@
+file_list_kermany_target1.txt
+NORMAL-12494-2.jpeg
+NORMAL-133321-1.jpeg
+NORMAL-15307-1.jpeg
+NORMAL-153950-1.jpeg
+NORMAL-1989796-1.jpeg
+NORMAL-1998191-1.jpeg
+NORMAL-2075832-1.jpeg
+NORMAL-2082689-1.jpeg

@@ -1,0 +1,16 @@
+dataset:
+  image_dir: /proj/vondrick/datasets/magnification/butterfly
+  img_size: 512
+  name: butterfly
+  num_samples: 100000
+  classes: ["Monarch", "Viceroy"]
+file_list_paths: 
+  - file_lists_short/file_list_butterfly_target0.txt
+  - file_lists_short/file_list_butterfly_target1.txt
+batch_size: 32
+lr: 1e-3
+epochs: 10
+patience: 5
+device: 7
+log_dir: /proj/vondrick2/mia/diff-usion/results/ensemble/butterflyclip
+clf_weights: None

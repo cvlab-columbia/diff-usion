@@ -36,11 +36,11 @@ $ python gradio_diff-usion_demo.py
 
 ## Reproducing our results 
 
-First, download the datasets, fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/drive/folders/1-_0000000000000000000000000000000000000000). Place the 'results' folder in the root directory. 
+First, download the datasets, fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/file/d/1pSI9gh9nD74A3O7CRDw4iD3fL2Boj9Hk/view?usp=sharing). Place the 'results' folder in the root directory. 
 
 Then, run the following commands to reproduce our results:
 ```bash
-$ python kandinsky_eval.py --config_path configs/edit/retina.yaml
+$ python kandinsky_eval_ckpt.py --config_path configs/edit/retina.yaml
 $ python make_gif.py --config_path configs/edit/retina.yaml
 ```
 
@@ -73,12 +73,18 @@ The image editing config file is in `configs/edit` folder, and we have provided 
 
 ### Run inference
 ```bash
-$ python kandinsky_eval.py --config_path configs/edit/retina.yaml
+$ python eval.py --config_path configs/edit/retina.yaml
 ```
 
 ### Crate GIFs
 ```bash
 $ python make_gif.py --config_path configs/edit/retina.yaml
+```
+
+### Crate interpolations
+You might also want to see how the strength of the manipulation scalar affects the interpolation. To do this, run:
+```bash
+$ python eval_save_interp.py --config_path configs/edit/retina.yaml
 ```
 
 ## Citation

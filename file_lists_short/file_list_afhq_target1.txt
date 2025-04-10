@@ -1,0 +1,9 @@
+file_list_afhq_target1.txt
+generated_flickr_cat_000056.jpg
+generated_flickr_cat_000136.jpg
+generated_flickr_cat_000180.jpg
+generated_flickr_cat_000314.jpg
+generated_flickr_cat_000418.jpg
+generated_flickr_cat_000441.jpg
+generated_flickr_cat_000534.jpg
+generated_flickr_cat_000536.jpg

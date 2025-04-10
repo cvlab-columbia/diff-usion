@@ -8,6 +8,8 @@ import pandas as pd
 import gradio as gr
 import threading
 import time
+import zipfile
+import shutil
 from pathlib import Path
 from torch.utils.data import DataLoader, Dataset, random_split
 import torchvision.transforms.v2 as transforms
@@ -42,57 +44,244 @@ DEVICE = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
 # CSS for styling the interface
 css = """
-.container {
-    max-width: 1200px;
-    margin: auto;
-    padding-top: 1.5rem;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body, * {
+    font-family: 'Inter', sans-serif !important;
+    letter-spacing: -0.01em;
 }
+
+.container {
+    max-width: 1360px;
+    margin: auto;
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+}
+
 .header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #f0f0f0;
 }
+
 .header h1 {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 700;
-    color: #2C3E50;
-    margin-bottom: 0.5rem;
+    color: #222;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+    background: linear-gradient(90deg, #B39CD0 0%, #9D8AC7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
 }
+
 .header p {
     font-size: 1.1rem;
-    color: #7F8C8D;
+    color: #333;
     max-width: 800px;
     margin: 0 auto;
+    line-height: 1.6;
 }
+
+.subtitle {
+    font-size: 0.95rem;
+    color: #777;
+    max-width: 800px;
+    margin: 0.5rem auto 0;
+    line-height: 1.5;
+}
+
+.contact-info {
+    font-size: 0.8rem;
+    color: #777;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px dashed #e0e0e0;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .paper-info {
-    background-color: #F8F9FA;
-    border-left: 4px solid #3498DB;
-    padding: 1rem;
-    margin: 1.5rem 0;
-    border-radius: 0 4px 4px 0;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.8rem;
+    margin: 1.8rem 0;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+    border-left: 4px solid #B39CD0;
 }
-.section-header {
+
+.paper-info h3 {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #2C3E50;
-    margin: 1.5rem 0 1rem 0;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #ECF0F1;
+    color: #B39CD0;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
 }
+
+.paper-info p {
+    font-size: 1.05em;
+    line-height: 1.7;
+    color: #333;
+}
+
+.section-header {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #B39CD0;
+    margin: 2.5rem 0 1.5rem 0;
+    padding-bottom: 0.8rem;
+    border-bottom: 2px solid #ECF0F1;
+    letter-spacing: -0.02em;
+}
+
 .footer {
     text-align: center;
-    margin-top: 2rem;
-    padding: 1rem;
+    margin-top: 3rem;
+    padding: 1.5rem;
     border-top: 1px solid #ECF0F1;
-    color: #7F8C8D;
+    color: #666;
+    background-color: #f8f9fa;
+    border-radius: 0 0 12px 12px;
 }
+
 .btn-primary {
-    background-color: #3498DB !important;
+    background-color: #B39CD0 !important;
+    border-color: #B39CD0 !important;
+    transition: all 0.3s ease;
+    font-weight: 500 !important;
+    letter-spacing: 0.02em !important;
+    padding: 0.6rem 1.5rem !important;
+    border-radius: 8px !important;
 }
+
+.btn-primary:hover {
+    background-color: #9D8AC7 !important;
+    border-color: #9D8AC7 !important;
+}
+
 .gallery-item img {
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+}
+
+.upload-info {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #B39CD0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.upload-info p {
+    margin: 0;
+    font-size: 1.05em;
+    line-height: 1.6;
+}
+
+.upload-info strong {
+    color: #555;
+    font-weight: 600;
+}
+
+.parameter-box {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border-left: 4px solid #B39CD0;
+}
+
+.parameter-box p {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+}
+
+.parameter-box ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    color: #444;
+    line-height: 1.8;
+}
+
+.parameter-box li {
+    margin-bottom: 6px;
+}
+
+/* Form elements styling */
+input, select, textarea {
+    border-radius: 8px !important;
+    border: 1px solid #e0e0e0 !important;
+    padding: 10px 15px !important;
+    transition: all 0.3s ease !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #B39CD0 !important;
+    box-shadow: 0 0 0 3px rgba(179, 156, 208, 0.2) !important;
+}
+
+label {
+    font-weight: 500 !important;
+    color: #555 !important;
+    margin-bottom: 8px !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 2.2rem;
+    }
+    .section-header {
+        font-size: 1.5rem;
+    }
+    .paper-info {
+        padding: 1.2rem;
+    }
+    .container {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+    }
 }
 """
+
+# Function to extract uploaded zip file
+def extract_zip(zip_file, extract_dir):
+    """Extract a zip file to the specified directory"""
+    # Create a temporary directory for extraction
+    temp_dir = Path(extract_dir)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Extract the zip file
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        zip_ref.extractall(temp_dir)
+    
+    # Check if the extracted content has class0 and class1 folders
+    # If not, try to find them in subdirectories
+    class0_dir = temp_dir / "class0"
+    class1_dir = temp_dir / "class1"
+    
+    if not (class0_dir.exists() and class1_dir.exists()):
+        # Look for class0 and class1 in subdirectories
+        for subdir in temp_dir.iterdir():
+            if subdir.is_dir():
+                if (subdir / "class0").exists() and (subdir / "class1").exists():
+                    # Move the class directories to the temp_dir
+                    shutil.move(str(subdir / "class0"), str(class0_dir))
+                    shutil.move(str(subdir / "class1"), str(class1_dir))
+                    break
+    
+    # Verify that we have the required directories
+    if not (class0_dir.exists() and class1_dir.exists()):
+        raise ValueError("The uploaded zip file must contain 'class0' and 'class1' directories or a subdirectory containing them")
+    
+    return str(temp_dir)
 
 # Define a simple dataset class
 class TwoClassDataset(Dataset):
@@ -172,7 +361,7 @@ def create_gif(img1, img2, output_path):
     imageio.mimsave(output_path, [img1, img2], duration=1000, loop=0)
     return output_path
 
-def train_classifier(model, train_loader, val_loader, epochs, lr, device, patience=2):
+def train_classifier(model, train_loader, val_loader, epochs, lr, device, patience=5):
     """Train a classifier model with early stopping"""
     loss_fn = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -246,7 +435,7 @@ def train_classifier(model, train_loader, val_loader, epochs, lr, device, patien
     
     return model
 
-def train_ensemble_classifiers(train_dataset, val_dataset, output_dir, epochs=3, lr=0.001):
+def train_ensemble_classifiers(train_dataset, val_dataset, output_dir, epochs=10, lr=0.001):
     """Train an ensemble of classifiers"""
     classifiers_dir = output_dir / "classifiers"
     classifiers_dir.mkdir(exist_ok=True, parents=True)
@@ -262,7 +451,7 @@ def train_ensemble_classifiers(train_dataset, val_dataset, output_dir, epochs=3,
         val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE)
     else:
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE)
+        val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
     
     # Define models for ensemble
     # MobileNetV2 (smallest and fastest model)
@@ -279,8 +468,8 @@ def train_ensemble_classifiers(train_dataset, val_dataset, output_dir, epochs=3,
     
     # Train each model
     ensemble_models = []
-    model_names = ["mobilenet", "resnet", "efficientnet"]
-    models_list = [mobilenet, resnet, efficientnet]
+    model_names = ["efficientnet"] #"mobilenet", "resnet",
+    models_list = [efficientnet] #mobilenet, resnet, 
     
     for name, model in zip(model_names, models_list):
         print(f"Training {name}...")
@@ -329,7 +518,7 @@ def process_dataset(data_dir, output_dir, checkpoint_path=None, train_classifier
     # Split dataset into train and val
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    train_dataset, val_dataset = dataset, dataset #random_split(dataset, [train_size, val_size])
     
     if progress:
         progress(0.2, desc="Processing classifiers...")
@@ -339,10 +528,11 @@ def process_dataset(data_dir, output_dir, checkpoint_path=None, train_classifier
     classifiers_exist = classifiers_dir.exists() and len(list(classifiers_dir.glob("*.pth"))) >= 3
     
     # Train ensemble classifiers or load pre-trained ones
-    if train_classifiers and not classifiers_exist:
+    if True: #train_classifiers or not classifiers_exist:
         print("Training ensemble classifiers...")
         classifiers = train_ensemble_classifiers(train_dataset, val_dataset, output_dir)
     else:
+        classifiers_dir = Path("/proj/vondrick2/mia/diff-usion/results/ensemble/afhq")
         print("Loading pre-trained classifiers...")
         classifiers = []
         for model_path in classifiers_dir.glob("*.pth"):
@@ -351,7 +541,7 @@ def process_dataset(data_dir, output_dir, checkpoint_path=None, train_classifier
             classifiers.append(model)
     
     # Create class-specific validation datasets
-    val_indices = list(range(len(val_dataset)))[:10]
+    val_indices = list(range(len(val_dataset)))
     val_labels = [val_dataset[i][1] for i in val_indices]
     
     val_indices_0 = [i for i, label in zip(val_indices, val_labels) if label == 0]
@@ -396,7 +586,7 @@ def process_dataset(data_dir, output_dir, checkpoint_path=None, train_classifier
     class0_embeds_path = embeds_dir / Path("class0_embeds.pt")
     class1_embeds_path = embeds_dir / Path("class1_embeds.pt")
     
-    if class0_embeds_path.exists() and class1_embeds_path.exists():
+    if False: #class0_embeds_path.exists() and class1_embeds_path.exists():
         print("Loading existing embeddings...")
         class0_embeds = torch.load(class0_embeds_path, map_location=DEVICE)
         class1_embeds = torch.load(class1_embeds_path, map_location=DEVICE)
@@ -458,8 +648,8 @@ def process_dataset(data_dir, output_dir, checkpoint_path=None, train_classifier
     # Parameters for manipulation
     gs_inversion = 2
     gs_targets = [4]
-    t_skips = list(np.linspace(0.9, 0.0, 10))
-    manipulation_scales = [2.0]
+    t_skips = [0.85] #list(np.linspace(0.9, 0.5, 4))
+    manipulation_scales = [1.0]
     modes = [ManipulateMode.cond_avg]
     generator = torch.Generator(device="cpu").manual_seed(0)
     
@@ -757,7 +947,7 @@ def train_lora(data_dir, output_dir, num_epochs=5, learning_rate=1e-4, batch_siz
         # Split dataset into train and validation
         train_size = int(0.9 * len(dataset))
         val_size = len(dataset) - train_size
-        train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+        train_dataset, val_dataset = dataset, dataset#random_split(dataset, [train_size, val_size])
         
         # Create data loaders
         train_dataloader = DataLoader(
@@ -888,15 +1078,27 @@ def create_gradio_interface():
     lora_status = "Ready"
     lora_is_processing = False
     
-    def background_train_lora_process(data_dir, output_dir):
+    # Create temporary directories for uploads
+    temp_dir = Path("./temp_uploads")
+    temp_dir.mkdir(exist_ok=True, parents=True)
+    
+    lora_temp_dir = Path("./temp_lora_uploads")
+    lora_temp_dir.mkdir(exist_ok=True, parents=True)
+    
+    def background_train_lora_process(zip_file, output_dir):
         nonlocal lora_status, lora_is_processing
         
         try:
             lora_is_processing = True
+            lora_status = "Extracting uploaded dataset..."
+            
+            # Extract the uploaded zip file
+            data_dir = extract_zip(zip_file, lora_temp_dir / f"upload_{int(time.time())}")
+            
             lora_status = "Initializing LoRA training..."
             
             # Use default parameters
-            num_epochs = 5
+            num_epochs = 2000
             learning_rate = 1e-4
             batch_size = 32
             lora_rank = 4
@@ -917,37 +1119,72 @@ def create_gradio_interface():
             
             lora_status = f"LoRA training completed! Model saved to {lora_path}"
             lora_is_processing = False
-            return lora_status
+            
+            # Return the path to the trained model for download
+            return lora_status, lora_path
         except Exception as e:
             lora_status = f"Error during LoRA training: {str(e)}"
             lora_is_processing = False
-            return lora_status
+            return lora_status, None
     
-    def start_lora_training(data_dir, output_dir):
+    def start_lora_training(zip_file, output_dir):
         nonlocal lora_status
+        
+        if zip_file is None:
+            return "Please upload a dataset zip file", None
         
         # Start training in a background thread
         thread = threading.Thread(
             target=background_train_lora_process,
-            args=(data_dir, output_dir)
+            args=(zip_file, output_dir)
         )
         thread.daemon = True
         thread.start()
         
         # Return initial status
-        return "LoRA training started. This will take a while..."
+        return "LoRA training started. This will take a while...", None
     
     def check_lora_status():
         nonlocal lora_status
         return lora_status
+    
+    def process_uploaded_data(zip_file, output_dir, checkpoint_file, train_clf):
+        try:
+            if zip_file is None:
+                return "Please upload a dataset zip file", []
+            
+            # Update status
+            status_msg = "Extracting uploaded dataset..."
+            
+            # Extract the uploaded zip file
+            data_dir = extract_zip(zip_file, temp_dir / f"upload_{int(time.time())}")
+            
+            status_msg = "Starting processing..."
+            
+            # Process the checkpoint file if provided
+            #checkpoint_path = '/proj/vondrick2/mia/diff-usion/lora_output/checkpoint-500'
+            checkpoint_path =  '/proj/vondrick2/mia/diff-usion/lora_output_lamps/checkpoint-1800' #None #'/proj/vondrick2/mia/diff-usion/lora_output_birds/checkpoint-300'
+            
+            # Call the main processing function
+            gif_paths = process_dataset(data_dir, output_dir, checkpoint_path, train_clf)
+            
+            # Update status on completion
+            status_msg = "Completed! Generated counterfactuals are displayed below."
+            
+            return status_msg, gif_paths
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            print(error_msg)  # Print to console for debugging
+            return error_msg, []
     
     with gr.Blocks(css=css) as demo:
         with gr.Column(elem_classes="container"):
             with gr.Column(elem_classes="header"):
                 gr.HTML("""
                     <div class="header">
-                        <h1>DIFF-usion Demo</h1>
-                        <p>Generate fine-grained counterfactuals that show the minimal edits needed to flip an image's class</p>
+                        <h1>DIFFusion Demo</h1>
+                        <p class="subtitle">Generate fine-grained edits to images using another class of images as guidance.</p>
+                        <p class="contact-info">For any questions/comments/issues with this demo, please email mia.chiquier@cs.columbia.edu. Thank you to Lambda Labs for the GPU credits used for this demo. 🤖</p>
                     </div>
                 """)
             
@@ -955,17 +1192,30 @@ def create_gradio_interface():
                 gr.HTML("""
                     <h3>About the Paper</h3>
                     <p>"Teaching Humans Subtle Differences with DIFFusion" introduces a novel approach to generate 
-                    fine-grained counterfactuals that help humans understand subtle differences between visually similar classes.</p>
+                    fine-grained counterfactuals that help humans understand subtle differences between visually similar classes. The counterfactuals are generated by guiding the edit purely visually.</p>
                 """)
+
+            with gr.Column(elem_classes="paper-info"):
+                gr.HTML("""
+                    <h3>Optimal Usage Conditions & Limitations</h3>
+                    <p>Our method works best when the images per class are centered and aligned. However, if you have a large set of images per class (>50), this becomes less important. We do not support the use of our method on images of humans, as it is underexplored.</p>
+                """)
+            
             
             # Counterfactual Generation Section
             gr.HTML('<div class="section-header">Counterfactual Generation</div>')
             
+            with gr.Column(elem_classes="upload-info"):
+                gr.HTML("""
+                    <p><strong>Dataset Format:</strong> Upload a zip file containing two folders named 'class0' and 'class1', 
+                    each containing images of the respective class.</p>
+                """)
+            
             with gr.Row():
-                input_dir = gr.Textbox(
-                    label="Input Directory",
-                    placeholder="Path to folder with class0 and class1 subfolders",
-                    value="/proj/vondrick/datasets/magnification/butterflygrad"
+                input_zip = gr.File(
+                    label="Upload Dataset (ZIP file)",
+                    file_types=[".zip"],
+                    type="filepath"
                 )
                 output_dir = gr.Textbox(
                     label="Output Directory", 
@@ -973,9 +1223,10 @@ def create_gradio_interface():
                 )
             
             with gr.Row():
-                checkpoint_path = gr.Textbox(
-                    label="LoRA Checkpoint Path (optional)",
-                    value="/proj/vondrick2/mia/magnificationold/output/lora/butterfly/copper-forest-49/checkpoint-1800"
+                checkpoint_file = gr.File(
+                    label="Upload LoRA Checkpoint (optional)",
+                    file_types=[".pt", ".bin", ".pth"],
+                    type="binary"
                 )
                 train_clf = gr.Checkbox(label="Train New Classifiers", value=True)
             
@@ -984,21 +1235,49 @@ def create_gradio_interface():
             # LoRA Training Section
             gr.HTML('<div class="section-header">LoRA Training</div>')
             
+            with gr.Column(elem_classes="upload-info"):
+                gr.HTML("""
+                    <p><strong>Dataset Format:</strong> Upload a zip file containing two folders named 'class0' and 'class1', 
+                    each containing images of the respective class for training the LoRA model.</p>
+                """)
+
+            def update_lora_output_dir(zip_file):
+                """Update the LoRA output directory based on the uploaded zip filename"""
+                if zip_file is None:
+                    return "./lora_output"
+                
+                # Get the filename without extension
+                zip_path = Path(zip_file)
+                filename = zip_path.stem
+                
+                # Create a path with the filename
+                output_path = f"./lora_output_{filename}"
+                
+                return output_path 
+            
             with gr.Row():
-                lora_input_dir = gr.Textbox(
-                    label="Training Data Directory",
-                    placeholder="Path to folder with class0 and class1 subfolders",
-                    value="/proj/vondrick/datasets/magnification/butterflygrad"
+                lora_input_zip = gr.File(
+                    label="Upload Training Dataset (ZIP file)",
+                    file_types=[".zip"],
+                    type="filepath"
                 )
+                
                 lora_output_dir = gr.Textbox(
                     label="LoRA Output Directory", 
                     value="./lora_output"
                 )
+                
+                # Update output directory when zip file is uploaded
+                lora_input_zip.change(
+                    fn=update_lora_output_dir,
+                    inputs=[lora_input_zip],
+                    outputs=[lora_output_dir]
+                )
             
             gr.HTML("""
-                <div style="padding: 10px; background-color: #f8f9fa; border-radius: 4px; margin-bottom: 15px;">
-                    <p><strong>Default LoRA Training Parameters:</strong></p>
-                    <ul style="margin: 5px 0 0 20px; padding: 0;">
+                <div class="parameter-box">
+                    <p>Default LoRA Training Parameters:</p>
+                    <ul>
                         <li>Epochs: 5</li>
                         <li>Learning Rate: 1e-4</li>
                         <li>Batch Size: 32</li>
@@ -1011,6 +1290,7 @@ def create_gradio_interface():
             
             train_lora_btn = gr.Button("Train LoRA Model", elem_classes="btn-primary")
             lora_status_box = gr.Textbox(label="LoRA Training Status", value="Ready to train LoRA model")
+            lora_download = gr.File(label="Download Trained LoRA Model", visible=False)
             
             # Results Section
             gr.HTML('<div class="section-header">Results</div>')
@@ -1021,42 +1301,22 @@ def create_gradio_interface():
             
             gr.HTML("""
                 <div class="footer">
-                    <p>For any questions/comments/issues, please email mia.chiquier@cs.columbia.edu</p>
                     <p>© 2025 Columbia University</p>
                 </div>
             """)
         
-        # Simplified process function without complex progress tracking
-        def process_simple(data_dir, output_dir, checkpoint_path, train_clf):
-            try:
-                # Update status manually
-                status.update("Starting processing...")
-                
-                # Call the main processing function
-                gif_paths = process_dataset(data_dir, output_dir, checkpoint_path, train_clf)
-                
-                # Update status on completion
-                status.update("Completed! Generated counterfactuals are displayed below.")
-                
-                return gif_paths
-            except Exception as e:
-                error_msg = f"Error: {str(e)}"
-                status.update(error_msg)
-                print(error_msg)  # Print to console for debugging
-                return []
-        
         # Set up the click event for counterfactual generation
         process_btn.click(
-            fn=process_simple,
-            inputs=[input_dir, output_dir, checkpoint_path, train_clf],
-            outputs=gallery
+            fn=process_uploaded_data,
+            inputs=[input_zip, output_dir, checkpoint_file, train_clf],
+            outputs=[status, gallery]
         )
         
         # Set up the click event for LoRA training
         train_lora_btn.click(
             fn=start_lora_training,
-            inputs=[lora_input_dir, lora_output_dir],
-            outputs=lora_status_box
+            inputs=[lora_input_zip, lora_output_dir],
+            outputs=[lora_status_box, lora_download]
         )
         
         # Set up periodic status checking for LoRA training
@@ -1073,3 +1333,4 @@ def create_gradio_interface():
 if __name__ == "__main__":
     demo = create_gradio_interface()
     demo.launch() 
+
