@@ -38,7 +38,7 @@ $ python gradio_diff-usion_demo.py
 
 First, download the datasets: [AFHQ](https://www.kaggle.com/datasets/dimensi0n/afhq-512), [Retina](https://www.kaggle.com/datasets/paultimothymooney/kermany2018). The [Butterfly](https://drive.google.com/file/d/1AFp4t0ykNqOpYcxFeLJBQgOIk5jYaSwE/view?usp=sharing) dataset was obtained from iNaturalist and the [KikiBouba](https://drive.google.com/file/d/17ibF3tzFiZrMb9ZnpYlLEh-xmWkPJpNH/view?usp=drive_link) dataset was generated from the [Kiki Bouba generative model](https://github.com/TAU-VAILab/kiki-bouba) repository, but we have provided the compressed folders in the google drive links for ease of use. We are not able to release the black hole dataset publicly. 
 
-Next, download the fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/file/d/1pSI9gh9nD74A3O7CRDw4iD3fL2Boj9Hk/view?usp=sharing). Place the 'results' folder in the root directory. 
+Next, download the fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/file/d/1pSI9gh9nD74A3O7CRDw4iD3fL2Boj9Hk/view?usp=sharing). Place the `results` folder in the root directory. 
 
 Then, run the following commands to reproduce our results:
 ```bash
