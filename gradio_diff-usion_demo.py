@@ -1163,7 +1163,7 @@ def create_gradio_interface():
             
             # Process the checkpoint file if provided
             #checkpoint_path = '/proj/vondrick2/mia/diff-usion/lora_output/checkpoint-500'
-            checkpoint_path =  '/proj/vondrick2/mia/diff-usion/lora_output_lamps/checkpoint-1800' #None #'/proj/vondrick2/mia/diff-usion/lora_output_birds/checkpoint-300'
+            checkpoint_path =  '/proj/vondrick2/mia/diff-usion/lora_output_lampsfar/checkpoint-800' #None #'/proj/vondrick2/mia/diff-usion/lora_output_birds/checkpoint-300'
             
             # Call the main processing function
             gif_paths = process_dataset(data_dir, output_dir, checkpoint_path, train_clf)

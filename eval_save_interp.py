@@ -141,10 +141,6 @@ def main(cfg: KandinskyEvalConfig):
             for manip in manipulation_scales:
 
                 if mode == ManipulateMode.cond_avg:
-                    # image_embeds = orig_image_embeds + manipulation_scale * (
-                    #     pos_embeds_mean - neg_embeds_mean
-                    # )
-                    
 
                     # avg
                     image_embeds = norm_image_embeds + manip * (
