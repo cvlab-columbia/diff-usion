@@ -85,7 +85,7 @@ $ python eval.py --config_path configs/edit/retina.yaml
 $ python make_gif.py --config_path configs/edit/retina.yaml
 ```
 
-### Crate interpolations
+### Create interpolations
 You might also want to see how the strength of the manipulation scalar affects the interpolation. To do this, run:
 ```bash
 $ python eval_save_interp.py --config_path configs/edit/retina.yaml
