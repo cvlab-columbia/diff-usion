@@ -36,7 +36,7 @@ $ python gradio_diff-usion_demo.py
 
 ## Reproducing our results 
 
-First, download the datasets. [AFHQ](https://www.kaggle.com/datasets/dimensi0n/afhq-512), [Retina](https://www.kaggle.com/datasets/paultimothymooney/kermany2018). The butterfly dataset was obtained from iNaturalist and the KikiBouba dataset was generated from the repository, but we have provided the compressed folders in the following google drive [link] () for ease of use. We are not able to release the black hole dataset publicly. 
+First, download the datasets: [AFHQ](https://www.kaggle.com/datasets/dimensi0n/afhq-512), [Retina](https://www.kaggle.com/datasets/paultimothymooney/kermany2018). The [Butterfly] (https://drive.google.com/file/d/1AFp4t0ykNqOpYcxFeLJBQgOIk5jYaSwE/view?usp=sharing) dataset was obtained from iNaturalist and the [KikiBouba](https://drive.google.com/file/d/17ibF3tzFiZrMb9ZnpYlLEh-xmWkPJpNH/view?usp=drive_link) dataset was generated from the [Kiki Bouba generative model](https://github.com/TAU-VAILab/kiki-bouba) repository, but we have provided the compressed folders in the google drive links for ease of use. We are not able to release the black hole dataset publicly. 
 
 Next, download the fine-tuned lora weights, clip embeddings, and ensemble classifiers from [here](https://drive.google.com/file/d/1pSI9gh9nD74A3O7CRDw4iD3fL2Boj9Hk/view?usp=sharing). Place the 'results' folder in the root directory. 
 
@@ -46,7 +46,7 @@ $ python kandinsky_eval_ckpt.py --config_path configs/edit/retina.yaml
 $ python make_gif.py --config_path configs/edit/retina.yaml
 ```
 
-You can also reproduce our results on our datasets without downloading anything by reproducing the clip embeddings, ensemble classifiers, and lora weights yourself via the instructions in the next section.
+You can also reproduce our results on our datasets without downloading anything beyond the datasets by reproducing the clip embeddings, ensemble classifiers, and lora weights yourself via the instructions in the next section.
 
 ## Usage on your own dataset 
 ### Dataset format
