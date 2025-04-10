@@ -42,7 +42,7 @@ Next, download the fine-tuned lora weights, clip embeddings, and ensemble classi
 
 Then, run the following commands to reproduce our results:
 ```bash
-$ python kandinsky_eval_ckpt.py --config_path configs/edit/retina.yaml
+$ python eval.py --config_path configs/edit/retina.yaml
 $ python make_gif.py --config_path configs/edit/retina.yaml
 ```
 

@@ -10,6 +10,7 @@ import threading
 import time
 import zipfile
 import shutil
+import glob
 from pathlib import Path
 from torch.utils.data import DataLoader, Dataset, random_split
 import torchvision.transforms.v2 as transforms
@@ -32,6 +33,8 @@ from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 from torch.nn import functional as F
 from diffusers.optimization import get_scheduler
 import copy
+import subprocess
+
 # Set seeds for reproducibility
 torch.manual_seed(0)
 random.seed(0)
@@ -249,7 +252,118 @@ label {
         padding-bottom: 1.5rem;
     }
 }
+
+.sidebar {
+    background-color: #f8f9fa;
+    border-right: 1px solid #e0e0e0;
+    padding: 1.5rem;
+    min-height: 100vh;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+}
+
+.btn-secondary {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: white !important;
+    transition: all 0.3s ease;
+    font-weight: 500 !important;
+    letter-spacing: 0.02em !important;
+    padding: 0.6rem 1.5rem !important;
+    border-radius: 8px !important;
+    margin-bottom: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268 !important;
+    border-color: #5a6268 !important;
+}
+
+.description-box {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
 """
+
+# Update the EXAMPLE_DATASETS to include the correct paths
+EXAMPLE_DATASETS = [
+    {
+        "name": "butterfly",
+        "display_name": "Butterfly (Monarch vs Viceroy)",
+        "description": "Dataset containing images of Monarch and Viceroy butterflies for counterfactual generation",
+        "path": "compressed_datasets/butterfly.zip",
+        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_butterfly/checkpoint-500"
+    },
+    {
+        "name": "blackhole",
+        "display_name": "Black Hole (SANE vs MAD)",
+        "description": "Dataset containing SANE and MAD black hole simulation images",
+        "path": "compressed_datasets/blackhole.zip",
+        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_blackhole/checkpoint-500"
+    },
+    {
+        "name": "retina",
+        "display_name": "Retina (Normal vs Drusen)",
+        "description": "Dataset containing normal retina images and retinas with drusen",
+        "path": "compressed_datasets/retina.zip",
+        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_retina/checkpoint-500"
+    },
+    {
+        "name": "lamp",
+        "display_name": "Lamp (Table vs Floor)",
+        "description": "Dataset containing images of table lamps and floor lamps",
+        "path": "compressed_datasets/lampsfar.zip",
+        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_lampsfar/checkpoint-800"
+    }
+]
+
+# Function to get available example datasets
+def get_example_datasets():
+    """Get list of available example datasets"""
+    return [dataset["name"] for dataset in EXAMPLE_DATASETS]
+
+# Function to get example dataset info
+def get_example_dataset_info(name):
+    """Get information about an example dataset"""
+    for dataset in EXAMPLE_DATASETS:
+        if dataset["name"] == name:
+            return dataset
+    return None
+
+# Function to download an example dataset
+def download_example_dataset(name):
+    """Prepare an example dataset for download"""
+    if not name:
+        return None
+    
+    dataset_info = get_example_dataset_info(name)
+    if dataset_info and os.path.exists(dataset_info["path"]):
+        return dataset_info["path"]
+    return None
+
+# Function to load a cached result
+def load_cached_result(name):
+    """Extract a cached result to a temporary directory and return the path"""
+    result_info = get_cached_result_info(name)
+    if not result_info or not os.path.exists(result_info["path"]):
+        return None
+    
+    # Create a temporary directory
+    temp_dir = Path("./temp_cached") / f"{name}_{int(time.time())}"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Extract the cached file
+    try:
+        subprocess.run(
+            ["tar", "-xzf", result_info["path"], "-C", str(temp_dir)],
+            check=True
+        )
+        return str(temp_dir)
+    except subprocess.CalledProcessError as e:
+        print(f"Error extracting cached result: {str(e)}")
+        return None
 
 # Function to extract uploaded zip file
 def extract_zip(zip_file, extract_dir):
@@ -870,9 +984,6 @@ def process_dataset(data_dir, output_dir, checkpoint_path=None, train_classifier
     gif_paths = [r["gif_path"] for r in results]
     return gif_paths
 
-# Add the clip_collate_fn function
-
-
 # Update the train_lora function to use the clip_collate_fn
 def train_lora(data_dir, output_dir, num_epochs=5, learning_rate=1e-4, batch_size=32, lora_rank=4, lora_alpha=32, max_train_steps=None):
     """Train a LoRA model for Kandinsky using code from kandinsky_lora_train.py"""
@@ -1072,11 +1183,68 @@ def train_lora(data_dir, output_dir, num_epochs=5, learning_rate=1e-4, batch_siz
         print(f"Error in LoRA training: {str(e)}")
         return f"Error: {str(e)}"
 
-# Gradio interface
+# Modify the process_uploaded_data function to accept the checkpoint path
+def process_uploaded_data(zip_file, output_dir, checkpoint_file=None, train_clf=True, checkpoint_path=None):
+    """Process the uploaded data and generate counterfactuals"""
+    try:
+        # Create output directory
+        output_dir = Path(output_dir)
+        output_dir.mkdir(exist_ok=True, parents=True)
+        
+        # Extract the uploaded zip file
+        if zip_file is None:
+            return "Error: No zip file uploaded", []
+        
+        # Extract the zip file
+        data_dir = extract_zip(zip_file, temp_dir / f"upload_{int(time.time())}")
+        
+        # Process the checkpoint file if provided
+        if checkpoint_file is not None:
+            # Save the uploaded checkpoint file
+            checkpoint_dir = output_dir / "checkpoint"
+            checkpoint_dir.mkdir(exist_ok=True, parents=True)
+            checkpoint_path_file = checkpoint_dir / "checkpoint.pt"
+            
+            # Write the binary data to the file
+            with open(checkpoint_path_file, "wb") as f:
+                f.write(checkpoint_file)
+            checkpoint_path = str(checkpoint_path_file)
+        elif checkpoint_path is not None:
+            # Use the provided checkpoint path
+            pass
+        else:
+            # Use default checkpoint if none provided
+            checkpoint_path = '/proj/vondrick2/mia/diff-usion/lora_output_lampsfar/checkpoint-800'
+        
+        # Call the main processing function
+        gif_paths = process_dataset(data_dir, output_dir, checkpoint_path, train_clf)
+        
+        # Update status on completion
+        status_msg = "Completed! Generated counterfactuals are displayed below."
+        
+        return status_msg, gif_paths
+    except Exception as e:
+        error_msg = f"Error: {str(e)}"
+        print(error_msg)  # Print to console for debugging
+        return error_msg, []
+
+# Add these global variables at the top of your file, after imports
+# Global variables for LoRA training
+lora_status = "Ready"
+lora_is_processing = False
+
+# Create temporary directories for uploads
+temp_dir = Path("./temp_uploads")
+temp_dir.mkdir(exist_ok=True, parents=True)
+
+lora_temp_dir = Path("./temp_lora_uploads")
+lora_temp_dir.mkdir(exist_ok=True, parents=True)
+
+# Then remove these lines from create_gradio_interface
 def create_gradio_interface():
-    # Global variables for LoRA training
-    lora_status = "Ready"
-    lora_is_processing = False
+    # Remove these lines:
+    # lora_status = "Ready"
+    # lora_is_processing = False
     
     # Create temporary directories for uploads
     temp_dir = Path("./temp_uploads")
@@ -1085,230 +1253,243 @@ def create_gradio_interface():
     lora_temp_dir = Path("./temp_lora_uploads")
     lora_temp_dir.mkdir(exist_ok=True, parents=True)
     
-    def background_train_lora_process(zip_file, output_dir):
-        nonlocal lora_status, lora_is_processing
-        
-        try:
-            lora_is_processing = True
-            lora_status = "Extracting uploaded dataset..."
-            
-            # Extract the uploaded zip file
-            data_dir = extract_zip(zip_file, lora_temp_dir / f"upload_{int(time.time())}")
-            
-            lora_status = "Initializing LoRA training..."
-            
-            # Use default parameters
-            num_epochs = 2000
-            learning_rate = 1e-4
-            batch_size = 32
-            lora_rank = 4
-            lora_alpha = 32
-            max_train_steps = 1000  # Set a default max steps
-            
-            # Run the actual training
-            lora_path = train_lora(
-                data_dir=data_dir,
-                output_dir=output_dir,
-                num_epochs=num_epochs,
-                learning_rate=learning_rate,
-                batch_size=batch_size,
-                lora_rank=lora_rank,
-                lora_alpha=lora_alpha,
-                max_train_steps=max_train_steps
-            )
-            
-            lora_status = f"LoRA training completed! Model saved to {lora_path}"
-            lora_is_processing = False
-            
-            # Return the path to the trained model for download
-            return lora_status, lora_path
-        except Exception as e:
-            lora_status = f"Error during LoRA training: {str(e)}"
-            lora_is_processing = False
-            return lora_status, None
-    
-    def start_lora_training(zip_file, output_dir):
-        nonlocal lora_status
-        
-        if zip_file is None:
-            return "Please upload a dataset zip file", None
-        
-        # Start training in a background thread
-        thread = threading.Thread(
-            target=background_train_lora_process,
-            args=(zip_file, output_dir)
-        )
-        thread.daemon = True
-        thread.start()
-        
-        # Return initial status
-        return "LoRA training started. This will take a while...", None
-    
-    def check_lora_status():
-        nonlocal lora_status
-        return lora_status
-    
-    def process_uploaded_data(zip_file, output_dir, checkpoint_file, train_clf):
-        try:
-            if zip_file is None:
-                return "Please upload a dataset zip file", []
-            
-            # Update status
-            status_msg = "Extracting uploaded dataset..."
-            
-            # Extract the uploaded zip file
-            data_dir = extract_zip(zip_file, temp_dir / f"upload_{int(time.time())}")
-            
-            status_msg = "Starting processing..."
-            
-            # Process the checkpoint file if provided
-            #checkpoint_path = '/proj/vondrick2/mia/diff-usion/lora_output/checkpoint-500'
-            checkpoint_path =  '/proj/vondrick2/mia/diff-usion/lora_output_lampsfar/checkpoint-800' #None #'/proj/vondrick2/mia/diff-usion/lora_output_birds/checkpoint-300'
-            
-            # Call the main processing function
-            gif_paths = process_dataset(data_dir, output_dir, checkpoint_path, train_clf)
-            
-            # Update status on completion
-            status_msg = "Completed! Generated counterfactuals are displayed below."
-            
-            return status_msg, gif_paths
-        except Exception as e:
-            error_msg = f"Error: {str(e)}"
-            print(error_msg)  # Print to console for debugging
-            return error_msg, []
+    # Get initial list of example datasets
+    example_datasets = get_example_datasets()
     
     with gr.Blocks(css=css) as demo:
-        with gr.Column(elem_classes="container"):
-            with gr.Column(elem_classes="header"):
+        with gr.Row():
+            # Sidebar for example datasets
+            with gr.Column(scale=1, elem_classes="sidebar"):
+                gr.HTML('<div class="section-header">Example Datasets</div>')
+                
+                # Create a dropdown for example datasets
+                example_datasets_dropdown = gr.Dropdown(
+                    choices=[dataset["display_name"] for dataset in EXAMPLE_DATASETS],
+                    label="Select Example Dataset",
+                    value=EXAMPLE_DATASETS[0]["display_name"] if EXAMPLE_DATASETS else None,
+                    info="These are example datasets you can download and use"
+                )
+                
+                # Map display names back to internal names
+                def get_name_from_display(display_name):
+                    for dataset in EXAMPLE_DATASETS:
+                        if dataset["display_name"] == display_name:
+                            return dataset["name"]
+                    return None
+                
+                download_dataset_btn = gr.Button("Download Selected Dataset", elem_classes="btn-primary")
+                
+                dataset_download = gr.File(
+                    label="Download Dataset",
+                    visible=False
+                )
+                
+                # Add descriptions for each dataset
+                with gr.Column(elem_classes="description-box"):
+                    dataset_description = gr.Markdown("Select a dataset to see its description")
+                
+                # Add a button to use the selected dataset directly
+                use_dataset_btn = gr.Button("Use Selected Dataset", elem_classes="btn-secondary")
+            
+            # Main content area
+            with gr.Column(scale=3, elem_classes="container"):
+                with gr.Column(elem_classes="header"):
+                    gr.HTML("""
+                        <div class="header">
+                            <h1>DIFFusion Demo</h1>
+                            <p class="subtitle">Generate fine-grained edits to images using another class of images as guidance.</p>
+                            <p class="contact-info">For any questions/comments/issues with this demo, please email mia.chiquier@cs.columbia.edu. Thank you to Lambda Labs for the GPU credits used for this demo. 🤖</p>
+                        </div>
+                    """)
+                
+                with gr.Tabs():
+                    # Tab for generating new results
+                    with gr.TabItem("Generate New Results"):
+                        with gr.Column(elem_classes="paper-info"):
+                            gr.HTML("""
+                                <h3>About the Paper</h3>
+                                <p>"Teaching Humans Subtle Differences with DIFFusion" introduces a novel approach to generate 
+                                fine-grained counterfactuals that help humans understand subtle differences between visually similar classes. The counterfactuals are generated by guiding the edit purely visually.</p>
+                            """)
+
+                        with gr.Column(elem_classes="paper-info"):
+                            gr.HTML("""
+                                <h3>Optimal Usage Conditions & Limitations</h3>
+                                <p>Our method works best when the images per class are centered and aligned. However, if you have a large set of images per class (>50), this becomes less important. We do not support the use of our method on images of humans, as it is underexplored.</p>
+                            """)
+                            
+                            # Counterfactual Generation Section
+                            gr.HTML('<div class="section-header">Counterfactual Generation</div>')
+                            
+                            with gr.Column(elem_classes="upload-info"):
+                                gr.HTML("""
+                                    <p><strong>Dataset Format:</strong> Upload a zip file containing two folders named 'class0' and 'class1', 
+                                    each containing images of the respective class.</p>
+                                """)
+                            
+                            with gr.Row():
+                                input_zip = gr.File(
+                                    label="Upload Dataset (ZIP file)",
+                                    file_types=[".zip"],
+                                    type="filepath"
+                                )
+                                output_dir = gr.Textbox(
+                                    label="Output Directory", 
+                                    value="./output"
+                                )
+                            
+                            with gr.Row():
+                                checkpoint_file = gr.File(
+                                    label="Upload LoRA Checkpoint (optional)",
+                                    file_types=[".pt", ".bin", ".pth"],
+                                    type="binary"
+                                )
+                                train_clf = gr.Checkbox(label="Train New Classifiers", value=True)
+                            
+                            with gr.Row():
+                                process_btn = gr.Button("Generate Counterfactuals", elem_classes="btn-primary")
+                                cache_result_btn = gr.Button("Cache Current Results", elem_classes="btn-secondary")
+                                cache_name = gr.Textbox(label="Cache Name", placeholder="Enter a name for the cached result")
+                            
+                            # LoRA Training Section
+                            gr.HTML('<div class="section-header">LoRA Training</div>')
+                            
+                            with gr.Column(elem_classes="upload-info"):
+                                gr.HTML("""
+                                    <p><strong>Dataset Format:</strong> Upload a zip file containing two folders named 'class0' and 'class1', 
+                                    each containing images of the respective class for training the LoRA model.</p>
+                                """)
+
+                            def update_lora_output_dir(zip_file):
+                                """Update the LoRA output directory based on the uploaded zip filename"""
+                                if zip_file is None:
+                                    return "./lora_output"
+                                
+                                # Get the filename without extension
+                                zip_path = Path(zip_file)
+                                filename = zip_path.stem
+                                
+                                # Create a path with the filename
+                                output_path = f"./lora_output_{filename}"
+                                
+                                return output_path 
+                            
+                            with gr.Row():
+                                lora_input_zip = gr.File(
+                                    label="Upload Training Dataset (ZIP file)",
+                                    file_types=[".zip"],
+                                    type="filepath"
+                                )
+                                
+                                lora_output_dir = gr.Textbox(
+                                    label="LoRA Output Directory", 
+                                    value="./lora_output"
+                                )
+                                
+                                # Update output directory when zip file is uploaded
+                                lora_input_zip.change(
+                                    fn=update_lora_output_dir,
+                                    inputs=[lora_input_zip],
+                                    outputs=[lora_output_dir]
+                                )
+                            
+                            gr.HTML("""
+                                <div class="parameter-box">
+                                    <p>Default LoRA Training Parameters:</p>
+                                    <ul>
+                                        <li>Epochs: 5</li>
+                                        <li>Learning Rate: 1e-4</li>
+                                        <li>Batch Size: 32</li>
+                                        <li>LoRA Rank: 4</li>
+                                        <li>LoRA Alpha: 32</li>
+                                        <li>Max Training Steps: 1000</li>
+                                    </ul>
+                                </div>
+                            """)
+                            
+                            train_lora_btn = gr.Button("Train LoRA Model", elem_classes="btn-primary")
+                            lora_status_box = gr.Textbox(label="LoRA Training Status", value="Ready to train LoRA model")
+                            lora_download = gr.File(label="Download Trained LoRA Model", visible=False)
+                        
+                        # Results Section (shared between tabs)
+                        gr.HTML('<div class="section-header">Results</div>')
+                        
+                        with gr.Column():
+                            status = gr.Textbox(label="Status", value="Ready to generate counterfactuals")
+                            gallery = gr.Gallery(label="Generated Counterfactuals", columns=3, height="auto", elem_classes="gallery-item")
+                        
+                        gr.HTML("""
+                            <div class="footer">
+                                <p>© 2025 Columbia University</p>
+                            </div>
+                        """)
+                    
+                    # Tab for viewing cached results
+                    with gr.TabItem("Cached Results"):
+                        cached_status = gr.Textbox(label="Status", value="Select a cached result from the sidebar")
+                        cached_gallery = gr.Gallery(label="Cached Results", columns=3, height="auto", elem_classes="gallery-item")
+                
+                # Results Section (shared between tabs)
+                gr.HTML('<div class="section-header">Results</div>')
+                
+                with gr.Column():
+                    status = gr.Textbox(label="Status", value="Ready to generate counterfactuals")
+                    gallery = gr.Gallery(label="Generated Counterfactuals", columns=3, height="auto", elem_classes="gallery-item")
+                
                 gr.HTML("""
-                    <div class="header">
-                        <h1>DIFFusion Demo</h1>
-                        <p class="subtitle">Generate fine-grained edits to images using another class of images as guidance.</p>
-                        <p class="contact-info">For any questions/comments/issues with this demo, please email mia.chiquier@cs.columbia.edu. Thank you to Lambda Labs for the GPU credits used for this demo. 🤖</p>
+                    <div class="footer">
+                        <p>© 2025 Columbia University</p>
                     </div>
                 """)
+        
+        # Set up event handlers
+        
+        # Update description when selection changes
+        def update_description(display_name):
+            for dataset in EXAMPLE_DATASETS:
+                if dataset["display_name"] == display_name:
+                    return dataset["description"]
+            return "No description available"
+        
+        example_datasets_dropdown.change(
+            fn=update_description,
+            inputs=example_datasets_dropdown,
+            outputs=dataset_description
+        )
+        
+        # Download example dataset
+        download_dataset_btn.click(
+            fn=lambda display_name: download_example_dataset(get_name_from_display(display_name)),
+            inputs=example_datasets_dropdown,
+            outputs=dataset_download
+        )
+        
+        # Define a state variable to store the selected checkpoint path
+        checkpoint_path_state = gr.State(None)
+        
+        # Define the use_selected_dataset function inside create_gradio_interface
+        def use_selected_dataset(display_name):
+            name = get_name_from_display(display_name)
+            if not name:
+                return None, None
             
-            with gr.Column(elem_classes="paper-info"):
-                gr.HTML("""
-                    <h3>About the Paper</h3>
-                    <p>"Teaching Humans Subtle Differences with DIFFusion" introduces a novel approach to generate 
-                    fine-grained counterfactuals that help humans understand subtle differences between visually similar classes. The counterfactuals are generated by guiding the edit purely visually.</p>
-                """)
-
-            with gr.Column(elem_classes="paper-info"):
-                gr.HTML("""
-                    <h3>Optimal Usage Conditions & Limitations</h3>
-                    <p>Our method works best when the images per class are centered and aligned. However, if you have a large set of images per class (>50), this becomes less important. We do not support the use of our method on images of humans, as it is underexplored.</p>
-                """)
-            
-            
-            # Counterfactual Generation Section
-            gr.HTML('<div class="section-header">Counterfactual Generation</div>')
-            
-            with gr.Column(elem_classes="upload-info"):
-                gr.HTML("""
-                    <p><strong>Dataset Format:</strong> Upload a zip file containing two folders named 'class0' and 'class1', 
-                    each containing images of the respective class.</p>
-                """)
-            
-            with gr.Row():
-                input_zip = gr.File(
-                    label="Upload Dataset (ZIP file)",
-                    file_types=[".zip"],
-                    type="filepath"
-                )
-                output_dir = gr.Textbox(
-                    label="Output Directory", 
-                    value="./output"
-                )
-            
-            with gr.Row():
-                checkpoint_file = gr.File(
-                    label="Upload LoRA Checkpoint (optional)",
-                    file_types=[".pt", ".bin", ".pth"],
-                    type="binary"
-                )
-                train_clf = gr.Checkbox(label="Train New Classifiers", value=True)
-            
-            process_btn = gr.Button("Generate Counterfactuals", elem_classes="btn-primary")
-            
-            # LoRA Training Section
-            gr.HTML('<div class="section-header">LoRA Training</div>')
-            
-            with gr.Column(elem_classes="upload-info"):
-                gr.HTML("""
-                    <p><strong>Dataset Format:</strong> Upload a zip file containing two folders named 'class0' and 'class1', 
-                    each containing images of the respective class for training the LoRA model.</p>
-                """)
-
-            def update_lora_output_dir(zip_file):
-                """Update the LoRA output directory based on the uploaded zip filename"""
-                if zip_file is None:
-                    return "./lora_output"
-                
-                # Get the filename without extension
-                zip_path = Path(zip_file)
-                filename = zip_path.stem
-                
-                # Create a path with the filename
-                output_path = f"./lora_output_{filename}"
-                
-                return output_path 
-            
-            with gr.Row():
-                lora_input_zip = gr.File(
-                    label="Upload Training Dataset (ZIP file)",
-                    file_types=[".zip"],
-                    type="filepath"
-                )
-                
-                lora_output_dir = gr.Textbox(
-                    label="LoRA Output Directory", 
-                    value="./lora_output"
-                )
-                
-                # Update output directory when zip file is uploaded
-                lora_input_zip.change(
-                    fn=update_lora_output_dir,
-                    inputs=[lora_input_zip],
-                    outputs=[lora_output_dir]
-                )
-            
-            gr.HTML("""
-                <div class="parameter-box">
-                    <p>Default LoRA Training Parameters:</p>
-                    <ul>
-                        <li>Epochs: 5</li>
-                        <li>Learning Rate: 1e-4</li>
-                        <li>Batch Size: 32</li>
-                        <li>LoRA Rank: 4</li>
-                        <li>LoRA Alpha: 32</li>
-                        <li>Max Training Steps: 1000</li>
-                    </ul>
-                </div>
-            """)
-            
-            train_lora_btn = gr.Button("Train LoRA Model", elem_classes="btn-primary")
-            lora_status_box = gr.Textbox(label="LoRA Training Status", value="Ready to train LoRA model")
-            lora_download = gr.File(label="Download Trained LoRA Model", visible=False)
-            
-            # Results Section
-            gr.HTML('<div class="section-header">Results</div>')
-            
-            with gr.Column():
-                status = gr.Textbox(label="Status", value="Ready to generate counterfactuals")
-                gallery = gr.Gallery(label="Generated Counterfactuals", columns=3, height="auto", elem_classes="gallery-item")
-            
-            gr.HTML("""
-                <div class="footer">
-                    <p>© 2025 Columbia University</p>
-                </div>
-            """)
+            dataset_info = get_example_dataset_info(name)
+            if dataset_info and os.path.exists(dataset_info["path"]):
+                # Return the dataset path and update the checkpoint path state
+                return dataset_info["path"], dataset_info["checkpoint_path"]
+            return None, None
+        
+        # Set up the click handler for the use dataset button
+        use_dataset_btn.click(
+            fn=use_selected_dataset,
+            inputs=example_datasets_dropdown,
+            outputs=[input_zip, checkpoint_path_state]  # Store checkpoint path in state
+        )
         
         # Set up the click event for counterfactual generation
         process_btn.click(
             fn=process_uploaded_data,
-            inputs=[input_zip, output_dir, checkpoint_file, train_clf],
+            inputs=[input_zip, output_dir, checkpoint_file, train_clf, checkpoint_path_state],
             outputs=[status, gallery]
         )
         
@@ -1328,6 +1509,68 @@ def create_gradio_interface():
         )
     
     return demo
+
+# Add the start_lora_training function
+def start_lora_training(zip_file, output_dir):
+    """Start the LoRA training process in a background thread"""
+    global lora_status, lora_is_processing
+    
+    if lora_is_processing:
+        return "LoRA training is already in progress. Please wait for it to complete.", None
+    
+    if zip_file is None:
+        return "Error: No zip file uploaded", None
+    
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
+    
+    # Extract the zip file
+    try:
+        data_dir = extract_zip(zip_file, lora_temp_dir / f"lora_upload_{int(time.time())}")
+    except Exception as e:
+        return f"Error extracting zip file: {str(e)}", None
+    
+    # Start training in a background thread
+    lora_status = "Starting LoRA training..."
+    lora_is_processing = True
+    
+    thread = threading.Thread(
+        target=background_train_lora_process,
+        args=(zip_file, output_dir)
+    )
+    thread.daemon = True
+    thread.start()
+    
+    return "LoRA training started. This may take a while...", None
+
+def background_train_lora_process(zip_file, output_dir):
+    """Background process for LoRA training"""
+    global lora_status, lora_is_processing
+    
+    try:
+        # Extract the zip file
+        data_dir = extract_zip(zip_file, lora_temp_dir / f"lora_upload_{int(time.time())}")
+        
+        # Update status
+        lora_status = "Extracting dataset completed. Starting LoRA training..."
+        
+        # Train the LoRA model
+        result = train_lora(data_dir, output_dir)
+        
+        if result.startswith("Error"):
+            lora_status = f"LoRA training failed: {result}"
+        else:
+            lora_status = f"LoRA training completed successfully. Model saved to: {result}"
+    except Exception as e:
+        lora_status = f"Error in LoRA training: {str(e)}"
+    finally:
+        lora_is_processing = False
+
+def check_lora_status():
+    """Check the status of LoRA training"""
+    global lora_status
+    return lora_status
 
 # Launch the app
 if __name__ == "__main__":
