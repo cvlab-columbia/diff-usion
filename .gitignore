@@ -23,6 +23,11 @@ c
 fonts/
 eval/
 *.ttf
+couches/
+lampsfar/
+compressed_datasets/
+cached_results2/
+arxiv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

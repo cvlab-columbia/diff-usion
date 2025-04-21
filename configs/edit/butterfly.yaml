@@ -6,18 +6,18 @@ dataset:
   classes: ["Monarch", "Viceroy"]
 
 file_list_paths: 
-  - file_lists_short/file_list_butterfly_target0.txt
-  - file_lists_short/file_list_butterfly_target1.txt
+  - file_lists/file_list_butterfly_target0.txt
+  - file_lists/file_list_butterfly_target1.txt
 batch_size: 1
 num_inference_steps: 100
 num_images: 10000
 device: 1 
-output_dir: ./results/eval/kandinsky_sweeps/reports/butterfly_ckpt_num_images_dandyplant126
+output_dir: ./results/eval/kandinsky_sweeps/reports/butterfly_ckpt_num_images_copperforest49
 
 eval_clf_weights: /proj/vondrick2/mia/diff-usion/results/ensemble/butterfly
 
-clip_image_embeds_dir: output/embeddings
+clip_image_embeds_dir: results/clip_image_embeds/butterfly
 embed_filenames: ["class0_embeds", "class1_embeds"]
-ckpt: [1800,1900,2000]
-lora_weights_dir: /proj/vondrick2/mia/diff-usion/output/lora/butterfly/dandy-plant-126
+ckpt: [1800]
+lora_weights_dir: /proj/vondrick2/mia/magnificationold/output/lora/butterfly/copper-forest-49
 
