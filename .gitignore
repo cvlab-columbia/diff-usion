@@ -28,7 +28,10 @@ lampsfar/
 compressed_datasets/
 cached_results2/
 arxiv/
-
+cached_results/
+cached_results_copy/
+cached_results/
+example_images/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

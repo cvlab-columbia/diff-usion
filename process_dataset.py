@@ -23,18 +23,18 @@ import numpy as np
 
 #/proj/vondrick/datasets/magnification/kermany
 
-EXAMPLE_DATASETS = [
-    {
-        "name": "kermany",
-        "display_name": "Retina",
-        "description": "Dataset containing images of table lamps and floor lamps",
-        "direct_dataset_path": "/proj/vondrick/datasets/magnification/kermany/train",
-        "class_names": ["DRUSEN", "NORMAL"],
-        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/output/lora/kermany/balmy-snowball-84/checkpoint-2000",
-        "embeddings_path": "/proj/vondrick2/mia/magnificationold/results/clip_image_embeds/kermany",
-        "classifier_path": None
-    }
-]
+# EXAMPLE_DATASETS = [
+#     {
+#         "name": "kermany",
+#         "display_name": "Retina",
+#         "description": "Dataset containing images of table lamps and floor lamps",
+#         "direct_dataset_path": "/proj/vondrick/datasets/magnification/kermany/train",
+#         "class_names": ["DRUSEN", "NORMAL"],
+#         "checkpoint_path": "/proj/vondrick2/mia/diff-usion/output/lora/kermany/balmy-snowball-84/checkpoint-2000",
+#         "embeddings_path": "/proj/vondrick2/mia/magnificationold/results/clip_image_embeds/kermany",
+#         "classifier_path": None
+#     }
+# ]
 
 
 # EXAMPLE_DATASETS = [
@@ -49,17 +49,44 @@ EXAMPLE_DATASETS = [
 #     }
 # ]
 
-# EXAMPLE_DATASETS = [
-#     {
-#         "name": "afhq",
-#         "display_name": "Cats vs. Dogs (AFHQ)",
-#         "description": "Dataset containing images of table lamps and floor lamps",
-#         "direct_dataset_path": "/proj/vondrick2/orr/projects/stargan-v2/data/afhq/train",
-#         "checkpoint_path": None,
-#         "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/afhq",
-#         "classifier_path": "/proj/vondrick2/mia/diff-usion/results/ensemble/afhq"
-#     }
-# ]
+EXAMPLE_DATASETS = [
+    {
+        "name": "afhq",
+        "display_name": "Cats vs. Dogs (AFHQ)",
+        "description": "Dataset containing images of table lamps and floor lamps",
+        "direct_dataset_path": "/proj/vondrick2/orr/projects/stargan-v2/data/afhq/train",
+        "checkpoint_path": None,
+        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/afhq",
+        "classifier_path": "/proj/vondrick2/mia/diff-usion/results/ensemble/afhq"
+    },
+        {
+        "name": "butterfly",
+        "display_name": "Butterfly (Monarch vs Viceroy)",
+        "description": "Dataset containing images of Monarch and Viceroy butterflies for counterfactual generation",
+        "path": "/proj/vondrick/datasets/magnification/butterfly.tar.gz",
+        "direct_dataset_path": "/proj/vondrick/datasets/magnification/butterflygrad",
+        "checkpoint_path": "/proj/vondrick2/mia/magnificationold/output/lora/butterfly/copper-forest-49/checkpoint-1800",
+        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/butterfly",
+        "classifier_path": "/proj/vondrick2/mia/diff-usion/results/ensemble/butterfly"
+    },
+    {
+        "name": "couches",
+        "display_name": "Couches",
+        "description": "Dataset containing images of chairs and floor",
+        "direct_dataset_path": "/proj/vondrick2/mia/diff-usion/couches",
+        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/couches",
+        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output/couches/checkpoint-1000",
+    },
+        {
+        "name": "lamp",
+        "display_name": "Lamps",
+        "description": "Dataset containing images of table lamps and floor lamps",
+        "direct_dataset_path": "/proj/vondrick2/mia/diff-usion/lampsfar",
+        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_lampsfar/checkpoint-800",
+        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/lampsfar",
+        "classifier_path": "/proj/vondrick2/mia/diff-usion/results/ensemble/lampsfar"
+    }
+]
 
 # Update the EXAMPLE_DATASETS to include direct dataset paths, embeddings, and classifiers
 # EXAMPLE_DATASETS = [

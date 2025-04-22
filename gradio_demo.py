@@ -14,31 +14,13 @@ import glob
 from pathlib import Path
 from torch.utils.data import DataLoader, Dataset, random_split
 import torchvision.transforms.v2 as transforms
-from diffusers.schedulers import DDIMScheduler, DDPMScheduler
-from peft import PeftModel, LoraConfig, get_peft_model
-from torchvision.transforms.functional import to_pil_image
 from PIL import Image, ImageDraw, ImageFont
 import imageio
 from tqdm import tqdm
-from torchvision.models.mobilenetv2 import MobileNet_V2_Weights
-from torchvision.models.resnet import ResNet18_Weights
-from torchvision.models.efficientnet import EfficientNet_B0_Weights
-from torchvision import models
-import torch.nn as nn
-from utils.metrics import ensemble_predict
-from diffusers import UNet2DConditionModel, VQModel
-from accelerate import Accelerator
-from accelerate.utils import set_seed
-from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
-from torch.nn import functional as F
-from diffusers.optimization import get_scheduler
-import copy
-import subprocess
 import tarfile
 import queue
 import hashlib
 import json
-from models.kandinsky_pipelines import KandinskyV22PipelineWithInversion, ManipulateMode
 
 
 # Set seeds for reproducibility
@@ -600,144 +582,6 @@ def create_gif(img1, img2, output_path):
     # Increase duration to 1 second per image (1000ms)
     imageio.mimsave(output_path, [img1_copy, img2_copy], duration=1000, loop=0)
     return output_path
-
-def train_classifier(model, train_loader, val_loader, epochs, lr, device, patience=5):
-    """Train a classifier model with early stopping"""
-    global classifier_should_stop
-    
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    model.to(device)
-    
-    best_val_loss = float('inf')
-    best_model_state = None
-    early_stop_counter = 0
-    
-    for epoch in range(epochs):
-        # Check if we should stop
-        if classifier_should_stop:
-            print("Classifier training cancelled")
-            break
-            
-        # Training phase
-        model.train()
-        train_loss = 0.0
-        train_correct = 0
-        
-        for images, labels, _ in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} - Training"):
-            images = images.to(device)
-            labels = labels.to(device).float().unsqueeze(1)
-            
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = loss_fn(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            
-            train_loss += loss.item() * images.size(0)
-            preds = (torch.sigmoid(outputs) > 0.5).float()
-            train_correct += (preds == labels).sum().item()
-        
-        train_loss /= len(train_loader.dataset)
-        train_acc = train_correct / len(train_loader.dataset)
-        
-        # Validation phase
-        model.eval()
-        val_loss = 0.0
-        val_correct = 0
-        
-        with torch.no_grad():
-            for images, labels, _ in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation"):
-                images = images.to(device)
-                labels = labels.to(device).float().unsqueeze(1)
-                
-                outputs = model(images)
-                loss = loss_fn(outputs, labels)
-                
-                val_loss += loss.item() * images.size(0)
-                preds = (torch.sigmoid(outputs) > 0.5).float()
-                val_correct += (preds == labels).sum().item()
-        
-        val_loss /= len(val_loader.dataset)
-        val_acc = val_correct / len(val_loader.dataset)
-        
-        print(f"Epoch {epoch+1}/{epochs} - "
-              f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-              f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
-        
-        # Save best model and check for early stopping
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_model_state = model.state_dict().copy()
-            early_stop_counter = 0
-        else:
-            early_stop_counter += 1
-            if early_stop_counter >= patience:
-                print(f"Early stopping at epoch {epoch+1}")
-                break
-    
-    # Load best model state
-    if best_model_state is not None:
-        model.load_state_dict(best_model_state)
-    
-    return model
-
-def train_ensemble_classifiers(train_dataset, val_dataset, classifiers_dir, epochs=10, lr=0.001):
-    """Train an ensemble of classifiers"""
-
-    classifiers_dir.mkdir(exist_ok=True, parents=True)
-    
-    # Limit training data if dataset is very large
-    if len(train_dataset) > 1000:
-        print(f"Limiting training data from {len(train_dataset)} to 1000 samples for faster training")
-        indices = torch.randperm(len(train_dataset))[:1000]
-        indices_val = torch.randperm(len(val_dataset))[:100]
-        train_subset = torch.utils.data.Subset(train_dataset, indices)
-        val_subset = torch.utils.data.Subset(val_dataset, indices_val)
-        train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE)
-    else:
-        train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
-    
-    # Define models for ensemble
-    # MobileNetV2 (smallest and fastest model)
-    mobilenet = models.mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
-    mobilenet.classifier[1] = nn.Linear(mobilenet.last_channel, 1)
-    
-    # ResNet18
-    resnet = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-    resnet.fc = nn.Linear(resnet.fc.in_features, 1)
-    
-    # EfficientNet-B0
-    efficientnet = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
-    efficientnet.classifier[1] = nn.Linear(efficientnet.classifier[1].in_features, 1)
-    
-    # Train each model
-    ensemble_models = []
-    model_names = ["efficientnet"] #"mobilenet", "resnet",
-    models_list = [efficientnet] #mobilenet, resnet, 
-    
-    for name, model in zip(model_names, models_list):
-        print(f"Training {name}...")
-        trained_model = train_classifier(
-            model=model,
-            train_loader=train_loader,
-            val_loader=val_loader,
-            epochs=epochs,
-            lr=lr,
-            device=DEVICE,
-            patience=1  # Early stop after 1 epoch without improvement
-        )
-        
-        # Save model
-        save_path = classifiers_dir / f"{name}.pth"
-        torch.save(trained_model, save_path)
-        ensemble_models.append(trained_model)
-        
-        print(f"Saved {name} to {save_path}")
-    
-    return ensemble_models
 
 # Modify the update_progress_status function to be more informative
 def update_progress_status():
