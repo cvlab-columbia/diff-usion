@@ -92,9 +92,12 @@ $ python eval_save_interp.py --config_path configs/edit/retina.yaml
 ```
 
 ## Citation
-@article{chiquier2025teaching,
+If our code or models aided your research, please cite our [paper](https://arxiv.org/pdf/2504.08046):
+```
+@misc{chiquier2025teaching,
   title={Teaching Humans Subtle Differences with DIFFusion},
   author={Chiquier, Mia and Avrech, Orr and Gandelsman, Yossi and Feng, Berthy and Bouman, Katherine and Vondrick, Carl},
   journal={arXiv preprint arXiv:2504.08046},
   year={2025}
-}
+}		
+```
