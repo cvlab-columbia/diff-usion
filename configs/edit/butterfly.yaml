@@ -19,5 +19,5 @@ eval_clf_weights: /proj/vondrick2/mia/diff-usion/results/ensemble/butterfly
 clip_image_embeds_dir: results/clip_image_embeds/butterfly
 embed_filenames: ["class0_embeds", "class1_embeds"]
 ckpt: [1800]
-lora_weights_dir: /proj/vondrick2/mia/magnificationold/output/lora/butterfly/copper-forest-49
+lora_weights_dir: /proj/vondrick2/mia/diff-usion/results/lora/butterfly/ckpt-1800
 
