@@ -298,11 +298,6 @@ def main(cfg: KandinskyLoRAConfig):
         cfg.pretrained_decoder_model_name_or_path, subfolder="unet"
     )
 
-    # BYOC
-    # clf_weights = Path("/proj/vondrick2/orr/projects/magnification/results/mobilenet_classifier_kandinsky/kikibouba/30epochs/model_28.pth")
-    # clf: MobileNetClassifier = torch.load(clf_weights, map_location="cpu")
-    # clf.eval()
-
     # freeze parameters of models to save more memory
     unet.requires_grad_(False)
     movq.requires_grad_(False)
@@ -367,8 +362,9 @@ def main(cfg: KandinskyLoRAConfig):
 
     cfg.dataset.file_list_path = None
 
-
-    train_ds, val_ds = get_cls_dataset_by_name(cfg.dataset, dataset_transforms=[train_transform, val_transform])
+    train_ds, val_ds = get_cls_dataset_by_name(
+        cfg.dataset, dataset_transforms=[train_transform, val_transform]
+    )
 
     if cfg.dataset.subset is not None:
         subset_indices = list(range(cfg.dataset.subset))
@@ -482,15 +478,15 @@ def main(cfg: KandinskyLoRAConfig):
         torch_dtype=weight_dtype,
     )
     val_pipeline = val_pipeline.to(accelerator.device)
-    #val_pipeline.set_progress_bar_config(disable=True)
+    # val_pipeline.set_progress_bar_config(disable=True)
 
     for epoch in range(first_epoch, cfg.num_train_epochs):
         progress_bar = tqdm(
-        range(0, cfg.max_train_steps),
-        initial=initial_global_step,
-        desc="Steps",
-        # Only show the progress bar once on each machine.
-        disable=not accelerator.is_local_main_process,
+            range(0, cfg.max_train_steps),
+            initial=initial_global_step,
+            desc="Steps",
+            # Only show the progress bar once on each machine.
+            disable=not accelerator.is_local_main_process,
         )
         lora_net.train()
         train_loss = 0.0
@@ -591,25 +587,25 @@ def main(cfg: KandinskyLoRAConfig):
                         #         checkpoints, key=lambda x: int(x.split("-")[1])
                         #     )
 
-                            # # before we save the new checkpoint, we need to have at _most_ `checkpoints_total_limit - 1` checkpoints
-                            # if len(checkpoints) >= cfg.checkpoints_total_limit:
-                            #     num_to_remove = (
-                            #         len(checkpoints) - cfg.checkpoints_total_limit + 1
-                            #     )
-                            #     removing_checkpoints = checkpoints[0:num_to_remove]
+                        # # before we save the new checkpoint, we need to have at _most_ `checkpoints_total_limit - 1` checkpoints
+                        # if len(checkpoints) >= cfg.checkpoints_total_limit:
+                        #     num_to_remove = (
+                        #         len(checkpoints) - cfg.checkpoints_total_limit + 1
+                        #     )
+                        #     removing_checkpoints = checkpoints[0:num_to_remove]
 
-                            #     logger.info(
-                            #         f"{len(checkpoints)} checkpoints already exist, removing {len(removing_checkpoints)} checkpoints"
-                            #     )
-                            #     logger.info(
-                            #         f"removing checkpoints: {', '.join(removing_checkpoints)}"
-                            #     )
+                        #     logger.info(
+                        #         f"{len(checkpoints)} checkpoints already exist, removing {len(removing_checkpoints)} checkpoints"
+                        #     )
+                        #     logger.info(
+                        #         f"removing checkpoints: {', '.join(removing_checkpoints)}"
+                        #     )
 
-                            #     for removing_checkpoint in removing_checkpoints:
-                            #         removing_checkpoint = os.path.join(
-                            #             cfg.output_dir, removing_checkpoint
-                            #         )
-                            #         shutil.rmtree(removing_checkpoint)
+                        #     for removing_checkpoint in removing_checkpoints:
+                        #         removing_checkpoint = os.path.join(
+                        #             cfg.output_dir, removing_checkpoint
+                        #         )
+                        #         shutil.rmtree(removing_checkpoint)
 
                         lora_net = lora_net.to(torch.float32)
                         logger.info(f"Saving LoRA weights in {cfg.output_dir}")
@@ -634,7 +630,6 @@ def main(cfg: KandinskyLoRAConfig):
                                 ignore_patterns=["step_*", "epoch_*"],
                             )
 
-                        
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
@@ -650,7 +645,7 @@ def main(cfg: KandinskyLoRAConfig):
         # if epoch % cfg.validation_epochs == 0:
         #     if accelerator.is_main_process:
         #         logger.info(f"Running validation... for {cfg.num_validation_images} images")
-                
+
         #         # run inference
         #         generator = torch.Generator(device=accelerator.device)
         #         if cfg.seed is not None:

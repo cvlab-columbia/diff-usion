@@ -1,8 +1,7 @@
 from pathlib import Path
 from contextlib import redirect_stdout
 import pandas as pd
-import numpy as np
-import pdb
+
 
 def analyze_results_like_baseline(df: pd.DataFrame, log_path=None):
     # Extract parameters from experiment names
@@ -65,21 +64,23 @@ def analyze_results_like_baseline(df: pd.DataFrame, log_path=None):
     # Create DataFrames for each manipulation value
     results_dfs = {}
     flip_rates = {}
-    
+
     if log_path is not None:
         with open(log_path, "w") as f:
             with redirect_stdout(f):
                 print("\nResults by manipulation value:")
                 for m in manip_values:
-                    results_df = pd.DataFrame.from_dict(results_by_manip[m], orient="index")
+                    results_df = pd.DataFrame.from_dict(
+                        results_by_manip[m], orient="index"
+                    )
                     results_dfs[m] = results_df
                     flip_rates[m] = successful_flips_by_manip[m] / total_images
-                    
+
                     print(f"\n=== Manipulation value: {m} ===")
                     print(f"Total images: {total_images}")
                     print(f"Successfully flipped: {successful_flips_by_manip[m]}")
                     print(f"Flip rate: {flip_rates[m]:.2%}")
-                    
+
                     if not results_df.empty:
                         print("\nParameter distribution in successful flips:")
                         print("\nTKSIP:")
@@ -174,7 +175,6 @@ def analyze_ddpmef_results(df: pd.DataFrame, log_path=None):
     return results_df, flip_rate
 
 
-
 def analyze_visual_sliders_results(df, log_path=None):
     # Extract parameters from experiment names like 'config_a1.0_r4_n2_dataset_10K_alpha1.0_rank4_noxattn_last.pt'
     def parse_experiment(exp):
@@ -196,25 +196,25 @@ def analyze_visual_sliders_results(df, log_path=None):
     # Try each combination of parameters
     best_combo = None
     best_flip_rate = 0
-    best_avg_lpips = float('inf')
+    best_avg_lpips = float("inf")
     best_results = None
-    params["n"] = [5,10,20,1000]
+    params["n"] = [5, 10, 20, 1000]
 
     for rank in params["rank"]:
         for n in params["n"]:
             # Get results for this parameter combination
             results = {}
             successful_flips = 0
-            
+
             for filename in df["filename"].unique():
                 img_df = df[df["filename"] == filename]
                 target = img_df.iloc[0]["target"]
-                
+
                 exp_results = img_df[(img_df["rank"] == rank) & (img_df["n"] == n)]
-                
+
                 if len(exp_results) > 0 and (
-                    (target == 1 and exp_results.iloc[0]["pred"] == 1) or
-                    (target == 0 and exp_results.iloc[0]["pred"] == 0)
+                    (target == 1 and exp_results.iloc[0]["pred"] == 1)
+                    or (target == 0 and exp_results.iloc[0]["pred"] == 0)
                 ):
                     results[filename] = {
                         "rank": rank,
@@ -267,29 +267,29 @@ def analyze_visual_sliders_results(df, log_path=None):
     return best_results, best_flip_rate
 
 
-
-
 def analyze_results_from_best(df: pd.DataFrame, samples_dir: Path, log_path=None):
     """
     Analyze results using the BEST_ prefixed files as the best results.
-    
+
     Args:
         df: DataFrame containing the report data
         samples_dir: Directory containing the sample images with BEST_ prefix
         log_path: Path to save the analysis log
-        
+
     Returns:
         Tuple of (results_dfs, flip_rates) where:
             - results_dfs is a dict mapping manipulation values to DataFrames of results
             - flip_rates is a dict mapping manipulation values to flip rates
     """
     # Extract parameters from experiment names
-    #import pdb; pdb.set_trace()
-    #filter df for rows where experiment contains BEST_
+    # import pdb; pdb.set_trace()
+    # filter df for rows where experiment contains BEST_
     df = df[df["experiment"].str.contains("BEST_")]
     # Extract parameters from experiment names
-    df["manip"] = df["experiment"].apply(lambda x: float(x.split("_")[4]) if "manip_" in x else 0.0)
-    
+    df["manip"] = df["experiment"].apply(
+        lambda x: float(x.split("_")[4]) if "manip_" in x else 0.0
+    )
+
     # Extract parameters from experiment names
     df["tksip"] = df["experiment"].apply(lambda x: float(x.split("_")[2]))
     df["gs_tar"] = df["experiment"].apply(lambda x: int(x.split("_")[6]))
@@ -349,21 +349,23 @@ def analyze_results_from_best(df: pd.DataFrame, samples_dir: Path, log_path=None
     # Create DataFrames for each manipulation value
     results_dfs = {}
     flip_rates = {}
-    
+
     if log_path is not None:
         with open(log_path, "w") as f:
             with redirect_stdout(f):
                 print("\nResults by manipulation value:")
                 for m in manip_values:
-                    results_df = pd.DataFrame.from_dict(results_by_manip[m], orient="index")
+                    results_df = pd.DataFrame.from_dict(
+                        results_by_manip[m], orient="index"
+                    )
                     results_dfs[m] = results_df
                     flip_rates[m] = successful_flips_by_manip[m] / total_images
-                    
+
                     print(f"\n=== Manipulation value: {m} ===")
                     print(f"Total images: {total_images}")
                     print(f"Successfully flipped: {successful_flips_by_manip[m]}")
                     print(f"Flip rate: {flip_rates[m]:.2%}")
-                    
+
                     if not results_df.empty:
                         print("\nParameter distribution in successful flips:")
                         print("\nTKSIP:")
@@ -377,21 +379,10 @@ def analyze_results_from_best(df: pd.DataFrame, samples_dir: Path, log_path=None
     return results_dfs, flip_rates
 
 
-
 def main():
     # Read and analyze
-    sweep_path = Path(
-        "/proj/vondrick2/orr/projects/magnification/results/eval/kandinsky_sweeps/reports/kikibouba/report.csv"
-    )
+    sweep_path = Path("./reports/report.csv")
     log_path = sweep_path.parent / "log_manip2.txt"
-
-    # df = pd.read_csv('results_logs/method_comparison_results_kikibouba_visual_sliders.csv')
-    # results, flip_rate = analyze_visual_sliders_results(df)
-
-    # Read and analyze
-    # df = pd.read_csv(sweep_path)
-    # results, flip_rate = analyze_ddpmef_results(df, log_path)
-    # results.to_csv(sweep_path.parent / f"analyzed-{sweep_path.name}")
 
     # Read and analyze
     df = pd.read_csv(sweep_path)

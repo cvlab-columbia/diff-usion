@@ -290,37 +290,37 @@ EXAMPLE_DATASETS = [
         "name": "butterfly",
         "display_name": "Butterfly (Monarch vs Viceroy)",
         "description": "Dataset containing images of Monarch and Viceroy butterflies for counterfactual generation",
-        "path": "/proj/vondrick/datasets/magnification/butterfly.tar.gz",
-        "direct_dataset_path": "/proj/vondrick/datasets/magnification/butterflygrad",
-        "checkpoint_path": "/proj/vondrick2/mia/magnificationold/output/lora/butterfly/copper-forest-49/checkpoint-1800",
-        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/butterfly",
-        "classifier_path": "/proj/vondrick2/mia/diff-usion/results/ensemble/butterfly"
+        "path": "./data/butterfly.tar.gz",
+        "direct_dataset_path": "./data/butterflygrad",
+        "checkpoint_path": "./output/lora/butterfly/copper-forest-49/checkpoint-1800",
+        "embeddings_path": "./data/results/clip_image_embeds/butterfly",
+        "classifier_path": "./data/results/ensemble/butterfly"
     },
     {
         "name": "retina",
         "display_name": "Retina (Normal vs Drusen)",
         "description": "Dataset containing normal retina images and retinas with drusen",
         "path": "compressed_datasets/retina.zip",
-        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_retina/checkpoint-500",
-        "embeddings_path": "/proj/vondrick2/mia/diff-usion/precomputed/retina/embeddings",
-        "classifier_path": "/proj/vondrick2/mia/diff-usion/precomputed/retina/classifiers"
+        "checkpoint_path": "./data/lora_output_retina/checkpoint-500",
+        "embeddings_path": "./data/precomputed/retina/embeddings",
+        "classifier_path": "./data/precomputed/retina/classifiers"
     },
     {
         "name": "lamp",
         "display_name": "Lamps",
         "description": "Dataset containing images of table lamps and floor lamps",
         "path": "compressed_datasets/lampsfar.zip",
-        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output_lampsfar/checkpoint-800",
-        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/lampsfar",
-        "classifier_path": "/proj/vondrick2/mia/diff-usion/results/ensemble/lampsfar"
+        "checkpoint_path": "./data/lora_output_lampsfar/checkpoint-800",
+        "embeddings_path": "./data/results/clip_image_embeds/lampsfar",
+        "classifier_path": "./data/results/ensemble/lampsfar"
     },
     {
         "name": "couches",
         "display_name": "Couches",
         "description": "Dataset containing images of chairs and floor",
         "path": "compressed_datasets/couches.zip",
-        "embeddings_path": "/proj/vondrick2/mia/diff-usion/results/clip_image_embeds/couches",
-        "checkpoint_path": "/proj/vondrick2/mia/diff-usion/lora_output/couches/checkpoint-1000",
+        "embeddings_path": "./data/results/clip_image_embeds/couches",
+        "checkpoint_path": "./data/lora_output/couches/checkpoint-1000",
     }
 ]
 
