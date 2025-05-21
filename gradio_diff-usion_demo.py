@@ -1630,7 +1630,6 @@ def create_gradio_interface():
                     <div class="header">
                         <h1>DIFFusion Demo</h1>
                         <p class="subtitle">Generate fine-grained edits to images using another class of images as guidance.</p>
-                        <p class="contact-info">For any questions/comments/issues with this demo, please email mia.chiquier@cs.columbia.edu. Thank you to Lambda Labs for the GPU credits used for this demo. 🤖</p>
                     </div>
                 """)
         
