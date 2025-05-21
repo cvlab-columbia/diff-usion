@@ -15,7 +15,7 @@ than known a priori. In the Retina dataset, normal retinas lack the horizontal l
 ## Setup
 Create conda environment:
 ```bash
-$ conda create -p /proj/vondrick4/mia/condaenvs/diff-usion python=3.9
+$ conda create -n diff-usion python=3.9
 $ conda activate diff-usion
 ```
 Clone and install requirements:

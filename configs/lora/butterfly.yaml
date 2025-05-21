@@ -1,5 +1,5 @@
 dataset:
-  image_dir: /proj/vondrick/datasets/magnification/butterfly
+  image_dir: ./data/butterfly
   img_size: 512
   name: butterfly
   num_samples: 10000
@@ -12,18 +12,14 @@ file_list_paths:
 train_batch_size: 32
 num_train_epochs: 4
 learning_rate: 0.003
-output_dir: 'output/lora/butterfly'
+output_dir: ./output/lora/butterfly
 lora_alpha: 8.0
 rank: 4
 max_train_steps: 2000
-
-
 seed: 0
-
 checkpoints_total_limit: 20
-
 num_gpus: 1
 guidance_scale: 6
 lora_alpha: 8.0
 
-lora_weights_dir: output/lora/butterfly/new
+lora_weights_dir: null

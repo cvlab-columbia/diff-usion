@@ -1,14 +1,13 @@
 dataset:
   name: afhq
-  image_dir: /proj/vondrick4/datasets/data/afhq
+  image_dir: ./data/afhq
   img_size: 512
   num_samples: 30
-  # classes: [1960, 1990]
 
 batch_size: 32
 lr: 1e-3
 epochs: 10
 patience: 5
 device: 4
-log_dir: /proj/vondrick2/mia/diff-usion/results/clip_classifier_kandinsky/afhq/check
+log_dir: ./logs
 clf_weights: None
